@@ -1,0 +1,6 @@
+{
+  "framework": "nextjs",
+  "rewrites": [
+    { "source": "/archive", "destination": "/archive/index.html" }
+  ]
+}
