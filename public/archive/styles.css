@@ -1,0 +1,96 @@
+/*html, body {*/
+/*    margin: 0;*/
+/*    padding: 0;*/
+/*    background-color: #000;*/
+/*}*/
+
+
+.training-intro {
+    max-width: 800px;
+    margin: 40px auto 30px;
+    padding: 20px;
+    text-align: center;
+    border-bottom: 2px solid #000;
+}
+
+.training-intro h1 {
+    margin-bottom: 10px;
+    font-size: 2em;
+    font-weight: bold;
+}
+
+.training-intro p {
+    font-size: 1em;
+    line-height: 1.6;
+    color: #333;
+}
+
+
+.workout-cycle-log {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    color: #111;
+}
+
+/* Individual workout card */
+.specific-workout-log {
+    margin-bottom: 20px;
+    padding: 15px;
+    border-radius: 6px;
+    background-color: #E8E2D8;
+    border: 1px solid #ddd;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.specific-workout-log:hover {
+    transform: translateY(-2px);
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.12);
+}
+
+/* Workout title */
+.workout {
+    font-size: 1.4em;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+/* Date + bodyweight */
+.date-weight {
+    font-style: italic;
+    margin-bottom: 10px;
+    color: #555;
+}
+
+/* Movement names */
+.movement-name {
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+/* Lists */
+ul {
+    list-style-type: none;
+    padding-left: 15px;
+}
+
+li {
+    margin: 4px 0;
+}
+
+/* Totals */
+.total {
+    font-weight: bold;
+    color: #000;
+}
+
+/* Optional subtle separation instead of colors */
+.specific-workout-log + .specific-workout-log {
+    border-top: 2px solid #f0f0f0;
+}
+
+/* Rest day styling (subtle) */
+.specific-workout-log .workout {
+    border-left: 4px solid #000;
+    padding-left: 10px;
+}
