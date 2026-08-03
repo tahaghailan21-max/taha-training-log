@@ -411,7 +411,7 @@ export default function SessionForm({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ maxWidth: 680, margin: "0 auto", padding: "0 1rem 5rem" }}>
+      <form onSubmit={handleSubmit} style={{ maxWidth: 680, margin: "0 auto", padding: "0 1rem 1rem" }}>
 
         {/* ── Date / BW / Session / Buttons ── */}
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "1rem", marginBottom: "0.75rem" }}>
@@ -522,14 +522,23 @@ export default function SessionForm({
         </div>
 
         {/* ── Save ── */}
-        <button type="submit" disabled={saving}
-          style={{
-            width: "100%", background: saving ? "var(--lime-dim)" : "var(--lime)",
-            color: "#000", fontWeight: 800, fontSize: "1rem", border: "none",
-            borderRadius: 8, padding: "0.95rem", cursor: saving ? "not-allowed" : "pointer", letterSpacing: "0.03em",
-          }}>
-          {saving ? "Saving..." : isEdit ? "Save changes" : "Save session"}
-        </button>
+        <div style={{
+          position: "sticky", bottom: 0,
+          padding: "0.75rem 0",
+          background: "var(--bg)",
+          borderTop: "1px solid var(--border)",
+          marginLeft: "-1rem", marginRight: "-1rem",
+          paddingLeft: "1rem", paddingRight: "1rem",
+        }}>
+          <button type="submit" disabled={saving}
+            style={{
+              width: "100%", background: saving ? "var(--lime-dim)" : "var(--lime)",
+              color: "#000", fontWeight: 800, fontSize: "1rem", border: "none",
+              borderRadius: 8, padding: "0.95rem", cursor: saving ? "not-allowed" : "pointer", letterSpacing: "0.03em",
+            }}>
+            {saving ? "Saving..." : isEdit ? "Save changes" : "Save session"}
+          </button>
+        </div>
 
       </form>
     </>
