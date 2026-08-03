@@ -10,6 +10,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen } from "@fortawesome/free-solid-svg-icons";
 import SwipeableCard from "@/components/SwipeableCard";
 import { HelpButton } from "@/components/HelpModal";
+import LogoutButton from "@/components/LogoutButton";
 
 export const revalidate = 0;
 
@@ -107,6 +108,7 @@ export default async function HomePage() {
           </Link>
           <HelpButton />
           <ThemeToggle />
+          <LogoutButton />
         </div>
       </div>
 

@@ -7,6 +7,7 @@ import { formatDate } from "@/lib/format";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { HelpButton } from "@/components/HelpModal";
+import LogoutButton from "@/components/LogoutButton";
 
 /* ── Types ── */
 export type SetEntry = {
@@ -404,6 +405,7 @@ export default function SessionForm({
           </a>
           <HelpButton />
           <ThemeToggle />
+          <LogoutButton />
         </div>
       </div>
 

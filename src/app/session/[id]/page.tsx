@@ -9,6 +9,7 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faPen } from "@fortawesome/free-solid-svg-icons";
+import LogoutButton from "@/components/LogoutButton";
 
 export const revalidate = 0;
 
@@ -98,6 +99,7 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
             <button type="button" style={{ borderRadius: 20, padding: "0.3rem 0.9rem", fontSize: "0.85rem" }}>Archive</button>
           </Link>
           <ThemeToggle />
+          <LogoutButton />
         </div>
       </div>
 
