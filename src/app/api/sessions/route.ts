@@ -4,14 +4,17 @@ import { sessions, sessionExercises, sets, exercises } from "@/db/schema";
 import { desc, eq, inArray } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const url = new URL(req.url);
+  const limit = parseInt(url.searchParams.get("limit") ?? "50");
 
   const rows = await db
     .select()
     .from(sessions)
     .orderBy(desc(sessions.performed_on))
-    .limit(50);
+    .limit(limit);
 
   return NextResponse.json(rows);
 }

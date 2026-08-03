@@ -6,6 +6,7 @@ import { redirect, notFound } from "next/navigation";
 import { formatDate } from "@/lib/format";
 import DeleteButton from "./DeleteButton";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ThemeProvider";
 
 export const revalidate = 0;
 
@@ -91,6 +92,7 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
           <Link href="/archive">
             <button type="button" style={{ borderRadius: 20, padding: "0.3rem 0.9rem", fontSize: "0.85rem" }}>Archive</button>
           </Link>
+          <ThemeToggle />
         </div>
       </div>
 
@@ -218,6 +220,11 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
           <Link href="/" style={{ textDecoration: "none" }}>
             <button type="button" style={{ borderRadius: 20, padding: "0.4rem 1.1rem", fontSize: "0.85rem" }}>
               ← Back
+            </button>
+          </Link>
+          <Link href={`/session/${sessionId}/edit`} style={{ textDecoration: "none" }}>
+            <button type="button" style={{ borderRadius: 20, padding: "0.4rem 1.1rem", fontSize: "0.85rem", color: "var(--lime)", borderColor: "var(--lime)" }}>
+              ✏ Edit
             </button>
           </Link>
           <DeleteButton sessionId={sessionId} />
