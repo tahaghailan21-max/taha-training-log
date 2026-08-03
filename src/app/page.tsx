@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/ThemeProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen } from "@fortawesome/free-solid-svg-icons";
 import SwipeableCard from "@/components/SwipeableCard";
+import { HelpButton } from "@/components/HelpModal";
 
 export const revalidate = 0;
 
@@ -102,6 +103,7 @@ export default async function HomePage() {
               + Log
             </button>
           </Link>
+          <HelpButton />
           <ThemeToggle />
         </div>
       </div>

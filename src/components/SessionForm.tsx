@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/components/ThemeProvider";
 import { formatDate } from "@/lib/format";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
+import { HelpButton } from "@/components/HelpModal";
 
 /* ── Types ── */
 export type SetEntry = {
@@ -401,6 +402,7 @@ export default function SessionForm({
               Archive
             </button>
           </a>
+          <HelpButton />
           <ThemeToggle />
         </div>
       </div>
