@@ -4,7 +4,6 @@ import { desc, eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import Nav from "@/components/Nav";
 import { formatDate } from "@/lib/format";
 
 export const revalidate = 0;
@@ -21,7 +20,6 @@ export default async function HomePage() {
 
   const sessionIds = recentSessions.map((s) => s.id);
 
-  // Fetch exercise names for each session
   const exerciseMap: Record<number, string[]> = {};
   for (const id of sessionIds) {
     const rows = await db
@@ -34,48 +32,89 @@ export default async function HomePage() {
   }
 
   return (
-    <>
-      <Nav />
-      <div className="container" style={{ paddingTop: "1.5rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-          <h1 style={{ fontSize: "1.2rem" }}>Recent Sessions</h1>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", fontFamily: "var(--font)" }}>
+      {/* Header */}
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: "0.75rem 1rem", borderBottom: "1px solid var(--border)",
+        background: "var(--bg)", position: "sticky", top: 0, zIndex: 10,
+      }}>
+        <span style={{ color: "var(--lime)", fontWeight: 800, fontSize: "1.1rem", letterSpacing: "0.04em" }}>
+          TRAINING LOGS
+        </span>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <Link href="/archive">
+            <button type="button" style={{ borderRadius: 20, padding: "0.3rem 0.9rem", fontSize: "0.85rem" }}>Archive</button>
+          </Link>
           <Link href="/new">
-            <button className="primary">+ New Session</button>
+            <button type="button" className="primary" style={{ borderRadius: 20, padding: "0.3rem 0.9rem", fontSize: "0.85rem" }}>
+              + Log
+            </button>
           </Link>
         </div>
+      </div>
 
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "1rem 1rem 4rem" }}>
         {recentSessions.length === 0 && (
-          <p className="muted">No sessions yet. Log your first one!</p>
+          <p style={{ color: "var(--muted)", fontSize: "0.9rem", marginTop: "2rem", textAlign: "center" }}>
+            No sessions yet. Log your first one!
+          </p>
         )}
 
-        {recentSessions.map((s) => (
-          <Link key={s.id} href={`/session/${s.id}`} style={{ display: "block", textDecoration: "none" }}>
-            <div className="card" style={{ cursor: "pointer" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div>
-                  <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>
-                    {s.title ?? (s.is_rest ? "Rest" : "Session")}
-                  </div>
-                  <div className="muted">{formatDate(s.performed_on)}</div>
+        {recentSessions.map((s) => {
+          const title = s.title ?? (s.is_rest ? "Rest" : "Session");
+          const weightLabel = s.bodyweight_kg ? `${s.bodyweight_kg} kg` : "Unknown";
+          return (
+            <Link key={s.id} href={`/session/${s.id}`} style={{ display: "block", textDecoration: "none" }}>
+              <div style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderLeft: "4px solid var(--lime)",
+                borderRadius: 8,
+                padding: "1rem 1.25rem",
+                marginBottom: "0.75rem",
+                cursor: "pointer",
+                transition: "border-color 0.15s",
+              }}>
+                {/* Title ALL CAPS */}
+                <div style={{
+                  color: "var(--lime)",
+                  fontWeight: 800,
+                  fontSize: "1rem",
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  marginBottom: "0.3rem",
+                }}>
+                  {title}
                 </div>
-                {s.bodyweight_kg && (
-                  <span className="tag">{s.bodyweight_kg} kg</span>
+
+                {/* Date — weight = X */}
+                <div style={{ fontSize: "0.82rem", color: "var(--muted)" }}>
+                  {formatDate(s.performed_on)}{" "}
+                  <span>— weight = {weightLabel}</span>
+                </div>
+
+                {/* Exercise names as lime-colored list */}
+                {exerciseMap[s.id]?.length > 0 && (
+                  <div style={{ marginTop: "0.6rem", display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+                    {exerciseMap[s.id].map((name) => (
+                      <span key={name} style={{ fontSize: "0.85rem", color: "var(--lime)", fontWeight: 600 }}>
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {s.is_rest && (
+                  <div style={{ marginTop: "0.5rem", fontSize: "0.82rem", color: "var(--muted)", fontStyle: "italic" }}>
+                    Rest day
+                  </div>
                 )}
               </div>
-              {exerciseMap[s.id]?.length > 0 && (
-                <div style={{ marginTop: "0.5rem", display: "flex", flexWrap: "wrap", gap: "0.3rem" }}>
-                  {exerciseMap[s.id].map((name) => (
-                    <span key={name} className="tag">{name}</span>
-                  ))}
-                </div>
-              )}
-              {s.notes && (
-                <p className="muted" style={{ marginTop: "0.5rem", fontSize: "0.85rem" }}>{s.notes}</p>
-              )}
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
-    </>
+    </div>
   );
 }

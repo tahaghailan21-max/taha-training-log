@@ -3,11 +3,47 @@ import { sessions, sessionExercises, exercises, sets } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
-import Nav from "@/components/Nav";
-import { formatDate, describeSet } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import DeleteButton from "./DeleteButton";
+import Link from "next/link";
 
 export const revalidate = 0;
+
+function describeSetLine(s: {
+  set_count: number | null;
+  reps: number | null;
+  duration_sec: string | null;
+}): string {
+  const count = s.set_count && s.set_count > 1 ? `${s.set_count} sets` : null;
+  const reps = s.reps ? `${s.reps} reps` : null;
+  const secs = s.duration_sec ? `${s.duration_sec}s` : null;
+
+  if (count && reps) return `${count} of ${reps}`;
+  if (count && secs) return `${count} of ${secs}`;
+  if (count) return count;
+  if (reps) return `${reps}`;
+  if (secs) return secs;
+  return "—";
+}
+
+function totalLine(setRows: { set_count: number | null; reps: number | null; duration_sec: string | null }[]): string {
+  let totalSets = 0;
+  let totalReps = 0;
+  let totalSecs = 0;
+
+  for (const s of setRows) {
+    const cnt = s.set_count ?? 1;
+    totalSets += cnt;
+    if (s.reps) totalReps += s.reps * cnt;
+    if (s.duration_sec) totalSecs += parseFloat(s.duration_sec) * cnt;
+  }
+
+  const parts: string[] = [];
+  if (totalSets > 0) parts.push(`${totalSets} set${totalSets !== 1 ? "s" : ""}`);
+  if (totalReps > 0) parts.push(`${totalReps} reps`);
+  if (totalSecs > 0) parts.push(`${totalSecs}s`);
+  return parts.join(", ");
+}
 
 export default async function SessionPage({ params }: { params: Promise<{ id: string }> }) {
   const authed = await getSession();
@@ -37,43 +73,156 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
     })
   );
 
+  const sessionTitle = session.title ?? (session.is_rest ? "Rest" : "Session");
+  const weightLabel = session.bodyweight_kg ? `${session.bodyweight_kg} kg` : "Unknown";
+
   return (
-    <>
-      <Nav />
-      <div className="container" style={{ paddingTop: "1.5rem" }}>
-        <div style={{ marginBottom: "1.25rem" }}>
-          <h1 style={{ fontSize: "1.3rem", marginBottom: "0.25rem" }}>
-            {session.title ?? (session.is_rest ? "Rest" : "Session")}
+    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", fontFamily: "var(--font)" }}>
+      {/* Header nav */}
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: "0.75rem 1rem", borderBottom: "1px solid var(--border)",
+        background: "var(--bg)", position: "sticky", top: 0, zIndex: 10,
+      }}>
+        <Link href="/" style={{ color: "var(--lime)", fontWeight: 700, fontSize: "1.1rem", textDecoration: "none" }}>
+          TRAINING LOGS
+        </Link>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <Link href="/archive">
+            <button type="button" style={{ borderRadius: 20, padding: "0.3rem 0.9rem", fontSize: "0.85rem" }}>Archive</button>
+          </Link>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "1.25rem 1rem 4rem" }}>
+        {/* Session card */}
+        <div style={{
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          padding: "1.25rem 1.25rem 1.25rem 1.5rem",
+          borderLeft: "4px solid var(--lime)",
+          marginBottom: "1rem",
+        }}>
+          {/* Title */}
+          <h1 style={{
+            color: "var(--lime)",
+            fontWeight: 800,
+            fontSize: "1.15rem",
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            marginBottom: "0.35rem",
+          }}>
+            {sessionTitle}
           </h1>
-          <div className="muted">{formatDate(session.performed_on)}</div>
-          {session.bodyweight_kg && (
-            <div className="muted" style={{ marginTop: "0.25rem" }}>Weight: {session.bodyweight_kg} kg</div>
-          )}
+
+          {/* Date — weight */}
+          <div style={{ fontSize: "0.85rem", color: "var(--muted)", marginBottom: session.notes ? "0.75rem" : 0 }}>
+            {formatDate(session.performed_on)}{" "}
+            <span style={{ color: "var(--muted)" }}>— weight = {weightLabel}</span>
+          </div>
+
+          {/* Session notes */}
           {session.notes && (
-            <p style={{ marginTop: "0.75rem", fontStyle: "italic", color: "var(--muted)" }}>{session.notes}</p>
+            <p style={{ marginTop: "0.5rem", fontStyle: "italic", color: "var(--muted)", fontSize: "0.9rem" }}>
+              {session.notes}
+            </p>
           )}
         </div>
 
+        {/* Exercises */}
         {exercisesWithSets.map((ex) => (
-          <div key={ex.id} className="exercise-block card">
-            <h3>{ex.exercise?.name ?? "Unknown"}</h3>
-            {ex.notes && <p className="muted" style={{ marginBottom: "0.5rem" }}>{ex.notes}</p>}
-            {ex.sets.map((s, i) => (
-              <div key={s.id} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start", marginBottom: "0.4rem" }}>
-                <span className="muted" style={{ minWidth: "1.5rem" }}>{i + 1}.</span>
-                <div>
-                  <span>{describeSet(s)}</span>
-                  {s.note && <span className="muted" style={{ marginLeft: "0.5rem" }}>— {s.note}</span>}
-                </div>
-              </div>
-            ))}
+          <div key={ex.id} style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 8,
+            padding: "1rem 1.25rem",
+            marginBottom: "0.75rem",
+          }}>
+            {/* Exercise name */}
+            <h3 style={{
+              color: "var(--lime)",
+              fontWeight: 700,
+              fontSize: "1rem",
+              marginBottom: "0.6rem",
+            }}>
+              {ex.exercise?.name ?? "Unknown"}
+            </h3>
+
+            {/* Sets */}
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {ex.sets.map((s) => (
+                <li key={s.id} style={{ marginBottom: s.note ? "0.55rem" : "0.35rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <span style={{
+                      display: "inline-block", width: 6, height: 6,
+                      borderRadius: "50%", background: "var(--muted)",
+                      flexShrink: 0, marginTop: 2,
+                    }} />
+                    <span style={{ fontSize: "0.95rem" }}>{describeSetLine(s)}</span>
+                  </div>
+                  {/* Set note — indented with left border */}
+                  {s.note && (
+                    <div style={{
+                      marginLeft: "1.1rem",
+                      paddingLeft: "0.6rem",
+                      borderLeft: "2px solid var(--border)",
+                      fontStyle: "italic",
+                      color: "var(--muted)",
+                      fontSize: "0.85rem",
+                      marginTop: "0.2rem",
+                    }}>
+                      {s.note}
+                    </div>
+                  )}
+                </li>
+              ))}
+
+              {/* Total line */}
+              {ex.sets.length > 0 && (
+                <li style={{ marginTop: "0.4rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <span style={{
+                      display: "inline-block", width: 6, height: 6,
+                      borderRadius: "50%", background: "var(--lime)",
+                      flexShrink: 0, marginTop: 2,
+                    }} />
+                    <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--lime)" }}>
+                      Total: {totalLine(ex.sets)}
+                    </span>
+                  </div>
+                </li>
+              )}
+
+              {/* Exercise notes — italic grey bullet at bottom */}
+              {ex.notes && (
+                <li style={{ marginTop: "0.35rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <span style={{
+                      display: "inline-block", width: 6, height: 6,
+                      borderRadius: "50%", background: "var(--muted)",
+                      flexShrink: 0, marginTop: 2,
+                    }} />
+                    <span style={{ fontStyle: "italic", color: "var(--muted)", fontSize: "0.85rem" }}>
+                      {ex.notes}
+                    </span>
+                  </div>
+                </li>
+              )}
+            </ul>
           </div>
         ))}
 
-        <div style={{ marginTop: "1.5rem" }}>
+        {/* Actions */}
+        <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem", flexWrap: "wrap" }}>
+          <Link href="/" style={{ textDecoration: "none" }}>
+            <button type="button" style={{ borderRadius: 20, padding: "0.4rem 1.1rem", fontSize: "0.85rem" }}>
+              ← Back
+            </button>
+          </Link>
           <DeleteButton sessionId={sessionId} />
         </div>
       </div>
-    </>
+    </div>
   );
 }
