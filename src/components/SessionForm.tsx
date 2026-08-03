@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { saveDraft, clearDraft, addToOutbox } from "@/lib/idb";
 import { ThemeToggle } from "@/components/ThemeProvider";
 import { formatDate } from "@/lib/format";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faXmark, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 
 /* ── Types ── */
 export type SetEntry = {
@@ -429,8 +431,9 @@ export default function SessionForm({
           </div>
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
             <button type="button" onClick={openCopy}
-              style={{ borderRadius: 20, padding: "0.35rem 1.1rem", fontSize: "0.85rem", border: "1px solid var(--border)", background: "transparent", color: "var(--lime)", cursor: "pointer" }}>
-              ↻ Copy a session (7)
+              style={{ borderRadius: 20, padding: "0.35rem 1.1rem", fontSize: "0.85rem", border: "1px solid var(--border)", background: "transparent", color: "var(--lime)", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <FontAwesomeIcon icon={faRotateLeft} style={{ width: 13, height: 13 }} />
+              Copy a session (7)
             </button>
             <button type="button" onClick={markRestDay}
               style={{ borderRadius: 20, padding: "0.35rem 1.1rem", fontSize: "0.85rem", border: "1px solid var(--border)", background: "transparent", color: "var(--text)", cursor: "pointer" }}>
@@ -445,8 +448,8 @@ export default function SessionForm({
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem" }}>
               <h3 style={{ color: "var(--lime)", fontWeight: 700, fontSize: "1rem", margin: 0 }}>{ex.exercise_name}</h3>
               <button type="button" onClick={() => removeExercise(exIdx)}
-                style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 4, color: "var(--muted)", padding: "0.1rem 0.5rem", cursor: "pointer", fontSize: "0.85rem", lineHeight: 1.4 }}>
-                ✕
+                style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 4, color: "var(--muted)", padding: "0.25rem 0.5rem", cursor: "pointer", fontSize: "0.85rem", lineHeight: 1, display: "flex", alignItems: "center" }}>
+                <FontAwesomeIcon icon={faXmark} style={{ width: 13, height: 13 }} />
               </button>
             </div>
 

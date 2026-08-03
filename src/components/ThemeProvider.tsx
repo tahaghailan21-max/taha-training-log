@@ -1,5 +1,7 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faMoon, faSun } from "@fortawesome/free-solid-svg-icons";
 
 type Theme = "dark" | "light";
 const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({
@@ -60,7 +62,7 @@ export function ThemeToggle() {
         color: "var(--text)",
       }}
     >
-      {theme === "dark" ? "🌙" : "☀️"}
+      <FontAwesomeIcon icon={theme === "dark" ? faMoon : faSun} style={{ width: 15, height: 15 }} />
     </button>
   );
 }

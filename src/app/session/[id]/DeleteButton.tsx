@@ -1,6 +1,8 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faTrash } from "@fortawesome/free-solid-svg-icons";
 
 export default function DeleteButton({ sessionId }: { sessionId: number }) {
   const [confirm, setConfirm] = useState(false);
@@ -15,19 +17,24 @@ export default function DeleteButton({ sessionId }: { sessionId: number }) {
 
   if (!confirm) {
     return (
-      <button className="danger" onClick={() => setConfirm(true)}>
-        🗑 Delete session
+      <button className="danger" onClick={() => setConfirm(true)} style={{ borderRadius: 20, padding: "0.4rem 1.1rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+        <FontAwesomeIcon icon={faTrash} style={{ width: 13, height: 13 }} />
+        Delete
       </button>
     );
   }
 
   return (
     <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-      <span className="muted">Are you sure?</span>
-      <button className="danger" onClick={handleDelete} disabled={loading}>
+      <span style={{ color: "var(--muted)", fontSize: "0.85rem" }}>Are you sure?</span>
+      <button className="danger" onClick={handleDelete} disabled={loading}
+        style={{ borderRadius: 20, padding: "0.4rem 1.1rem", fontSize: "0.85rem" }}>
         {loading ? <span className="spinner" /> : "Yes, delete"}
       </button>
-      <button onClick={() => setConfirm(false)}>Cancel</button>
+      <button onClick={() => setConfirm(false)}
+        style={{ borderRadius: 20, padding: "0.4rem 1.1rem", fontSize: "0.85rem" }}>
+        Cancel
+      </button>
     </div>
   );
 }

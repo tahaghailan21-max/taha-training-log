@@ -7,6 +7,8 @@ import { formatDate } from "@/lib/format";
 import DeleteButton from "./DeleteButton";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeProvider";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowLeft, faPen } from "@fortawesome/free-solid-svg-icons";
 
 export const revalidate = 0;
 
@@ -218,13 +220,15 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
         {/* Actions */}
         <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem", flexWrap: "wrap" }}>
           <Link href="/" style={{ textDecoration: "none" }}>
-            <button type="button" style={{ borderRadius: 20, padding: "0.4rem 1.1rem", fontSize: "0.85rem" }}>
-              ← Back
+            <button type="button" style={{ borderRadius: 20, padding: "0.4rem 1.1rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <FontAwesomeIcon icon={faArrowLeft} style={{ width: 13, height: 13 }} />
+              Back
             </button>
           </Link>
           <Link href={`/session/${sessionId}/edit`} style={{ textDecoration: "none" }}>
-            <button type="button" style={{ borderRadius: 20, padding: "0.4rem 1.1rem", fontSize: "0.85rem", color: "var(--lime)", borderColor: "var(--lime)" }}>
-              ✏ Edit
+            <button type="button" style={{ borderRadius: 20, padding: "0.4rem 1.1rem", fontSize: "0.85rem", color: "var(--lime)", borderColor: "var(--lime)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <FontAwesomeIcon icon={faPen} style={{ width: 13, height: 13 }} />
+              Edit
             </button>
           </Link>
           <DeleteButton sessionId={sessionId} />

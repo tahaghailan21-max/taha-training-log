@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { formatDate } from "@/lib/format";
 import { ThemeToggle } from "@/components/ThemeProvider";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPen } from "@fortawesome/free-solid-svg-icons";
 
 export const revalidate = 0;
 
@@ -135,8 +137,9 @@ export default async function HomePage() {
                   <button type="button" style={{
                     borderRadius: 20, padding: "0.2rem 0.75rem", fontSize: "0.75rem",
                     border: "1px solid var(--border)", background: "transparent",
-                    color: "var(--muted)", cursor: "pointer",
+                    color: "var(--muted)", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.35rem",
                   }}>
+                    <FontAwesomeIcon icon={faPen} style={{ width: 11, height: 11 }} />
                     Edit
                   </button>
                 </Link>
