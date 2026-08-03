@@ -1,19 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { sessions, sessionExercises, sets, exercises, users } from "@/db/schema";
+import { sessions, sessionExercises, sets, exercises } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 
-async function canAccess(userId: number, sessionId: number): Promise<boolean> {
-  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!user) return false;
-  if (user.can_view_all) return true;
-  const [s] = await db.select({ user_id: sessions.user_id }).from(sessions).where(eq(sessions.id, sessionId)).limit(1);
-  return s?.user_id === userId;
-}
-
-async function canEdit(userId: number, sessionId: number): Promise<boolean> {
-  // Only the owner can edit/delete — Mohssine can view but not modify Taha's sessions
+async function ownsSession(userId: number, sessionId: number): Promise<boolean> {
   const [s] = await db.select({ user_id: sessions.user_id }).from(sessions).where(eq(sessions.id, sessionId)).limit(1);
   return s?.user_id === userId;
 }
@@ -25,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const sessionId = parseInt(id);
 
-  if (!(await canAccess(userId, sessionId))) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!(await ownsSession(userId, sessionId))) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const [session] = await db.select().from(sessions).where(eq(sessions.id, sessionId)).limit(1);
   if (!session) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -58,7 +49,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const sessionId = parseInt(id);
 
-  if (!(await canEdit(userId, sessionId))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await ownsSession(userId, sessionId))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
   const { performed_on, title, notes, bodyweight_kg, is_rest, exercises: exList } = body;
@@ -105,7 +96,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params;
   const sessionId = parseInt(id);
 
-  if (!(await canEdit(userId, sessionId))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await ownsSession(userId, sessionId))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await db.delete(sessions).where(eq(sessions.id, parseInt(id)));
   return NextResponse.json({ ok: true });

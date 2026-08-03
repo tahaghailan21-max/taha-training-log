@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { sessions, sessionExercises, sets, users } from "@/db/schema";
+import { sessions, sessionExercises, sets } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 
@@ -11,13 +11,12 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const limit = parseInt(url.searchParams.get("limit") ?? "50");
 
-  // Check if this user can view all sessions
-  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  const canViewAll = user?.can_view_all ?? false;
-
-  const rows = canViewAll
-    ? await db.select().from(sessions).orderBy(desc(sessions.performed_on)).limit(limit)
-    : await db.select().from(sessions).where(eq(sessions.user_id, userId)).orderBy(desc(sessions.performed_on)).limit(limit);
+  const rows = await db
+    .select()
+    .from(sessions)
+    .where(eq(sessions.user_id, userId))
+    .orderBy(desc(sessions.performed_on))
+    .limit(limit);
 
   return NextResponse.json(rows);
 }
