@@ -13,6 +13,15 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
+// ── users ─────────────────────────────────────────────────────────────────────
+export const users = pgTable("users", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  username: text("username").notNull().unique(),
+  password_hash: text("password_hash").notNull(),
+  can_view_all: boolean("can_view_all").notNull().default(false),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ── exercises ────────────────────────────────────────────────────────────────
 export const exercises = pgTable("exercises", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
@@ -36,6 +45,9 @@ export const exerciseAliases = pgTable("exercise_aliases", {
 export const sessions = pgTable("sessions", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
   client_id: uuid("client_id").notNull().unique(),
+  user_id: bigint("user_id", { mode: "number" })
+    .notNull()
+    .references(() => users.id),
   performed_on: date("performed_on").notNull(),
   title: text("title"),
   bodyweight_kg: numeric("bodyweight_kg"),
@@ -121,3 +133,4 @@ export type Session = typeof sessions.$inferSelect;
 export type SessionExercise = typeof sessionExercises.$inferSelect;
 export type Set = typeof sets.$inferSelect;
 export type Bodyweight = typeof bodyweight.$inferSelect;
+export type User = typeof users.$inferSelect;

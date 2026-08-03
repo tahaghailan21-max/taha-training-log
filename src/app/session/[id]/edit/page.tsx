@@ -11,13 +11,17 @@ export const revalidate = 0;
 function uuid() { return crypto.randomUUID(); }
 
 export default async function EditSessionPage({ params }: { params: Promise<{ id: string }> }) {
-  const authed = await getSession();
-  if (!authed) redirect("/login");
+  const userId = await getSession();
+  if (!userId) redirect("/login");
 
   const { id } = await params;
   const sessionId = parseInt(id);
 
   const [session] = await db.select().from(sessions).where(eq(sessions.id, sessionId)).limit(1);
+  if (!session) notFound();
+
+  // Only the session owner can edit
+  if (session.user_id !== userId) notFound();
   if (!session) notFound();
 
   const exRows = await db

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,14 +16,14 @@ export default function LoginPage() {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ username, password }),
     });
     setLoading(false);
     if (res.ok) {
       router.replace("/");
     } else {
       const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "Wrong password");
+      setError(data.error ?? "Wrong username or password");
     }
   }
 
@@ -32,11 +33,20 @@ export default function LoginPage() {
         <h1 className="lime" style={{ marginBottom: "1.25rem", fontSize: "1.4rem" }}>Training Log</h1>
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoFocus
+            autoCapitalize="none"
+            autoCorrect="off"
+            required
+          />
+          <input
             type="password"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            autoFocus
             required
           />
           {error && <p style={{ color: "var(--danger)", fontSize: "0.85rem" }}>{error}</p>}

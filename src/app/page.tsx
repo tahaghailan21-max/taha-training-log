@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { sessions, sessionExercises, exercises, sets } from "@/db/schema";
+import { sessions, sessionExercises, exercises, sets, users } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -47,12 +47,14 @@ function totalLine(rows: { set_count: number | null; reps: number | null; durati
 export default async function HomePage() {
   const authed = await getSession();
   if (!authed) redirect("/login");
+  const userId = authed;
 
-  const recentSessions = await db
-    .select()
-    .from(sessions)
-    .orderBy(desc(sessions.performed_on))
-    .limit(20);
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const canViewAll = user?.can_view_all ?? false;
+
+  const recentSessions = canViewAll
+    ? await db.select().from(sessions).orderBy(desc(sessions.performed_on)).limit(20)
+    : await db.select().from(sessions).where(eq(sessions.user_id, userId)).orderBy(desc(sessions.performed_on)).limit(20);
 
   // Fetch full exercise+set data for each session
   const sessionData = await Promise.all(

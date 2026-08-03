@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { sessions, sessionExercises, exercises, sets } from "@/db/schema";
+import { sessions, sessionExercises, exercises, sets, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
@@ -49,14 +49,18 @@ function totalLine(setRows: { set_count: number | null; reps: number | null; dur
 }
 
 export default async function SessionPage({ params }: { params: Promise<{ id: string }> }) {
-  const authed = await getSession();
-  if (!authed) redirect("/login");
+  const userId = await getSession();
+  if (!userId) redirect("/login");
 
   const { id } = await params;
   const sessionId = parseInt(id);
 
   const [session] = await db.select().from(sessions).where(eq(sessions.id, sessionId)).limit(1);
   if (!session) notFound();
+
+  // Check access: owner always allowed; can_view_all users allowed too
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (session.user_id !== userId && !user?.can_view_all) notFound();
 
   const exRows = await db
     .select()

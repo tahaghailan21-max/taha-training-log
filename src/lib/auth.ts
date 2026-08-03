@@ -23,7 +23,6 @@ async function hmacSign(payload: string): Promise<string> {
 
 async function hmacVerify(payload: string, sig: string): Promise<boolean> {
   const expected = await hmacSign(payload);
-  // Constant-time comparison
   if (expected.length !== sig.length) return false;
   let diff = 0;
   for (let i = 0; i < expected.length; i++) {
@@ -32,41 +31,34 @@ async function hmacVerify(payload: string, sig: string): Promise<boolean> {
   return diff === 0;
 }
 
-// ── Cookie token ──────────────────────────────────────────────────────────────
+// ── Token: payload = "auth:<userId>:<timestamp>" ─────────────────────────────
 
-export async function createSessionToken(): Promise<string> {
-  const payload = `auth:${Date.now()}`;
+export async function createSessionToken(userId: number): Promise<string> {
+  const payload = `auth:${userId}:${Date.now()}`;
   const sig = await hmacSign(payload);
   return `${payload}.${sig}`;
 }
 
-export async function verifySessionToken(token: string): Promise<boolean> {
+export async function verifySessionToken(token: string): Promise<number | null> {
   const lastDot = token.lastIndexOf(".");
-  if (lastDot === -1) return false;
+  if (lastDot === -1) return null;
   const payload = token.slice(0, lastDot);
   const sig = token.slice(lastDot + 1);
-  return hmacVerify(payload, sig);
+  const valid = await hmacVerify(payload, sig);
+  if (!valid) return null;
+  // Extract userId from "auth:<userId>:<ts>"
+  const parts = payload.split(":");
+  if (parts.length < 3) return null;
+  const userId = parseInt(parts[1]);
+  return isNaN(userId) ? null : userId;
 }
 
-// ── Password check ────────────────────────────────────────────────────────────
+// ── Server-side session check — returns userId or null ───────────────────────
 
-export function checkPassword(input: string): boolean {
-  const expected = process.env.LOG_PASSWORD;
-  if (!expected) throw new Error("LOG_PASSWORD is not set");
-  if (input.length !== expected.length) return false;
-  let diff = 0;
-  for (let i = 0; i < expected.length; i++) {
-    diff |= input.charCodeAt(i) ^ expected.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
-// ── Server-side session check ─────────────────────────────────────────────────
-
-export async function getSession(): Promise<boolean> {
+export async function getSession(): Promise<number | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
-  if (!token) return false;
+  if (!token) return null;
   return verifySessionToken(token);
 }
 
@@ -75,15 +67,15 @@ export async function getSession(): Promise<boolean> {
 export async function requireAuth(req: NextRequest): Promise<NextResponse | null> {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   if (!token) return NextResponse.redirect(new URL("/login", req.url));
-  const valid = await verifySessionToken(token);
-  if (!valid) return NextResponse.redirect(new URL("/login", req.url));
+  const userId = await verifySessionToken(token);
+  if (!userId) return NextResponse.redirect(new URL("/login", req.url));
   return null;
 }
 
-// ── Set/clear cookie (used in login/logout API routes) ───────────────────────
+// ── Set/clear cookie ──────────────────────────────────────────────────────────
 
-export async function setSessionCookie(res: NextResponse): Promise<void> {
-  const token = await createSessionToken();
+export async function setSessionCookie(res: NextResponse, userId: number): Promise<void> {
+  const token = await createSessionToken(userId);
   res.cookies.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkPassword, setSessionCookie } from "@/lib/auth";
+import bcrypt from "bcryptjs";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { setSessionCookie } from "@/lib/auth";
 
-// Simple in-memory lockout (resets on cold start — good enough for a personal app)
 const attempts = new Map<string, { count: number; until: number }>();
 const MAX_ATTEMPTS = 5;
-const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+const LOCKOUT_MS = 15 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") ?? "local";
@@ -16,17 +19,29 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const { password } = body as { password?: string };
+  const { username, password } = body as { username?: string; password?: string };
 
-  if (!password || !checkPassword(password)) {
+  if (!username || !password) {
+    return NextResponse.json({ error: "Username and password required" }, { status: 400 });
+  }
+
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.username, username.toLowerCase().trim()))
+    .limit(1);
+
+  const valid = user ? await bcrypt.compare(password, user.password_hash) : false;
+
+  if (!valid) {
     const current = attempts.get(ip) ?? { count: 0, until: 0 };
     const count = current.count + 1;
     attempts.set(ip, { count, until: count >= MAX_ATTEMPTS ? now + LOCKOUT_MS : 0 });
-    return NextResponse.json({ error: "Wrong password" }, { status: 401 });
+    return NextResponse.json({ error: "Wrong username or password" }, { status: 401 });
   }
 
   attempts.delete(ip);
   const res = NextResponse.json({ ok: true });
-  await setSessionCookie(res);
+  await setSessionCookie(res, user.id);
   return res;
 }

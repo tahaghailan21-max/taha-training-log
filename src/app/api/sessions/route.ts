@@ -1,29 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { sessions, sessionExercises, sets, exercises } from "@/db/schema";
-import { desc, eq, inArray } from "drizzle-orm";
+import { sessions, sessionExercises, sets, users } from "@/db/schema";
+import { desc, eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
-  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getSession();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(req.url);
   const limit = parseInt(url.searchParams.get("limit") ?? "50");
 
-  const rows = await db
-    .select()
-    .from(sessions)
-    .orderBy(desc(sessions.performed_on))
-    .limit(limit);
+  // Check if this user can view all sessions
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const canViewAll = user?.can_view_all ?? false;
+
+  const rows = canViewAll
+    ? await db.select().from(sessions).orderBy(desc(sessions.performed_on)).limit(limit)
+    : await db.select().from(sessions).where(eq(sessions.user_id, userId)).orderBy(desc(sessions.performed_on)).limit(limit);
 
   return NextResponse.json(rows);
 }
 
 export async function POST(req: NextRequest) {
-  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getSession();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { client_id, performed_on, title, notes, is_rest, exercises: exList } = body;
+  const { client_id, performed_on, title, notes, bodyweight_kg, is_rest, exercises: exList } = body;
 
   // Upsert session
   const existing = await db
@@ -38,17 +42,16 @@ export async function POST(req: NextRequest) {
     sessionId = existing[0].id;
     await db
       .update(sessions)
-      .set({ performed_on, title, notes, is_rest: is_rest ?? false, updated_at: new Date() })
+      .set({ performed_on, title, notes, bodyweight_kg: bodyweight_kg ?? null, is_rest: is_rest ?? false, updated_at: new Date() })
       .where(eq(sessions.id, sessionId));
   } else {
     const [inserted] = await db
       .insert(sessions)
-      .values({ client_id, performed_on, title, notes, is_rest: is_rest ?? false })
+      .values({ client_id, user_id: userId, performed_on, title, notes, bodyweight_kg: bodyweight_kg ?? null, is_rest: is_rest ?? false })
       .returning({ id: sessions.id });
     sessionId = inserted.id;
   }
 
-  // Insert exercises + sets
   if (exList && Array.isArray(exList)) {
     for (const ex of exList) {
       const existingSE = await db
