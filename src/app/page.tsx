@@ -12,6 +12,7 @@ import SwipeableCard from "@/components/SwipeableCard";
 import { HelpButton } from "@/components/HelpModal";
 import LogoutButton from "@/components/LogoutButton";
 import InstallButton from "@/components/InstallButton";
+import OfflineSnapshot from "@/components/OfflineSnapshot";
 
 export const revalidate = 0;
 
@@ -99,9 +100,6 @@ export default async function HomePage() {
           TRAINING LOGS
         </span>
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-          <Link href="/archive">
-            <button type="button" style={{ borderRadius: 20, padding: "0.3rem 0.9rem", fontSize: "0.85rem" }}>Archive</button>
-          </Link>
           <Link href="/new">
             <button type="button" className="primary" style={{ borderRadius: 20, padding: "0.3rem 0.9rem", fontSize: "0.85rem" }}>
               + Log
@@ -246,6 +244,7 @@ export default async function HomePage() {
           );
         })}
       </div>
+      <OfflineSnapshot />
     </div>
   );
 }

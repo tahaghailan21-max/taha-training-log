@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { saveDraft, clearDraft, addToOutbox } from "@/lib/idb";
+import { saveDraft, clearDraft, addToOutbox, getOutbox, removeFromOutbox, saveExerciseCache, loadExerciseCache, loadRecentSessions, addPendingExercise, getPendingExercises, clearPendingExercises } from "@/lib/idb";
 import { ThemeToggle } from "@/components/ThemeProvider";
 import { formatDate } from "@/lib/format";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -100,10 +100,12 @@ function CopyModal({
   sessions,
   onCopy,
   onClose,
+  fromCache,
 }: {
   sessions: CopySession[];
   onCopy: (s: CopySession) => void;
   onClose: () => void;
+  fromCache?: boolean;
 }) {
   return (
     <div className="copy-modal-overlay" onClick={onClose}>
@@ -115,6 +117,11 @@ function CopyModal({
             ✕
           </button>
         </div>
+        {fromCache && (
+          <p style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: "0.75rem", fontStyle: "italic" }}>
+            ● Showing cached sessions — you&apos;re offline
+          </p>
+        )}
         {sessions.length === 0 && (
           <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>No recent sessions found.</p>
         )}
@@ -200,6 +207,7 @@ export default function SessionForm({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [showCopy, setShowCopy] = useState(false);
   const [copySessions, setCopySessions] = useState<CopySession[]>([]);
+  const [copyFromCache, setCopyFromCache] = useState(false);
 
   const isEdit = editId != null;
 
@@ -210,12 +218,26 @@ export default function SessionForm({
   );
 
   useEffect(() => {
-    fetch("/api/exercises").then(r => r.json()).then(({ exercises, aliases: raw }) => {
-      setAllExercises(exercises);
-      const m: Record<string, number> = {};
-      for (const a of raw) m[a.alias.toLowerCase()] = a.exercise_id;
-      setAliases(m);
-    });
+    fetch("/api/exercises")
+      .then(r => r.json())
+      .then(({ exercises, aliases: raw }) => {
+        setAllExercises(exercises);
+        const m: Record<string, number> = {};
+        for (const a of raw) m[a.alias.toLowerCase()] = a.exercise_id;
+        setAliases(m);
+        // Persist to cache for offline use
+        saveExerciseCache(exercises, raw).catch(() => {});
+      })
+      .catch(() => {
+        // Offline — load from IndexedDB cache
+        loadExerciseCache().then(cached => {
+          if (!cached) return;
+          setAllExercises(cached.exercises);
+          const m: Record<string, number> = {};
+          for (const a of cached.aliases) m[a.alias.toLowerCase()] = a.exercise_id;
+          setAliases(m);
+        }).catch(() => {});
+      });
   }, []);
 
   // Only load/save draft for new sessions
@@ -242,11 +264,43 @@ export default function SessionForm({
 
   useEffect(() => {
     setOnline(navigator.onLine);
-    const on = () => setOnline(true);
+
+    async function flushAll() {
+      setOnline(true);
+      // 1. Flush pending exercises first (sessions may reference them)
+      try {
+        const pending = await getPendingExercises();
+        for (const ex of pending) {
+          await fetch("/api/exercises", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: ex.name }),
+          });
+        }
+        if (pending.length > 0) await clearPendingExercises();
+      } catch { /* still offline — will retry next time */ return; }
+
+      // 2. Flush outbox sessions
+      try {
+        const outbox = await getOutbox();
+        for (const payload of outbox) {
+          const res = await fetch("/api/sessions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (res.ok) await removeFromOutbox(payload.client_id);
+        }
+      } catch { /* ignore — will retry */ }
+    }
+
     const off = () => setOnline(false);
-    window.addEventListener("online", on);
+    window.addEventListener("online", flushAll);
     window.addEventListener("offline", off);
-    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+    return () => {
+      window.removeEventListener("online", flushAll);
+      window.removeEventListener("offline", off);
+    };
   }, []);
 
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
@@ -268,32 +322,43 @@ export default function SessionForm({
 
   /* ── Copy session ── */
   async function openCopy() {
-    const res = await fetch("/api/sessions?limit=7");
-    const rows = await res.json();
-    // For each session fetch exercises
-    const withEx: CopySession[] = await Promise.all(
-      rows.slice(0, 7).map(async (s: { id: number; performed_on: string; title: string | null }) => {
-        const r = await fetch(`/api/sessions/${s.id}`);
-        const data = await r.json();
-        return {
-          id: s.id,
-          performed_on: s.performed_on,
-          title: s.title,
-          exercises: (data.exercises ?? []).map((ex: {
-            exercise: { name: string };
-            notes: string | null;
-            sets: { reps: number | null; duration_sec: string | null; set_count: number | null; note: string | null }[];
-          }) => ({
-            exercise_name: ex.exercise?.name ?? "Unknown",
-            notes: ex.notes,
-            sets: ex.sets,
-          })),
-        };
-      })
-    );
-    // Exclude current session if editing
-    const filtered = withEx.filter(s => s.id !== editId);
+    let sessions: { id: number; performed_on: string; title: string | null; exercises: { exercise_name: string; notes: string | null; sets: { reps: number | null; duration_sec: string | null; set_count: number | null; note: string | null }[] }[] }[] = [];
+    let fromCache = false;
+
+    try {
+      const res = await fetch("/api/sessions?limit=7");
+      if (!res.ok) throw new Error("not ok");
+      const rows = await res.json();
+      const withEx = await Promise.all(
+        rows.slice(0, 7).map(async (s: { id: number; performed_on: string; title: string | null }) => {
+          const r = await fetch(`/api/sessions/${s.id}`);
+          const data = await r.json();
+          return {
+            id: s.id,
+            performed_on: s.performed_on,
+            title: s.title,
+            exercises: (data.exercises ?? []).map((ex: {
+              exercise: { name: string };
+              notes: string | null;
+              sets: { reps: number | null; duration_sec: string | null; set_count: number | null; note: string | null }[];
+            }) => ({
+              exercise_name: ex.exercise?.name ?? "Unknown",
+              notes: ex.notes,
+              sets: ex.sets,
+            })),
+          };
+        })
+      );
+      sessions = withEx;
+    } catch {
+      // Offline — use cached sessions
+      sessions = await loadRecentSessions();
+      fromCache = sessions.length > 0;
+    }
+
+    const filtered = sessions.filter(s => s.id !== editId);
     setCopySessions(filtered);
+    setCopyFromCache(fromCache);
     setShowCopy(true);
   }
 
@@ -349,22 +414,31 @@ export default function SessionForm({
           resolvedId = exact.id;
           resolvedName = exact.name;
         } else {
-          // Create it in the DB
-          const res = await fetch("/api/exercises", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: input }),
-          });
-          if (!res.ok) { alert("Failed to create movement."); return; }
-          const created = await res.json() as { id: number; name: string };
-          resolvedId = created.id;
-          resolvedName = created.name;
+          // Create it — online: POST to DB; offline: queue to pending store
+          if (online) {
+            const res = await fetch("/api/exercises", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name: input }),
+            });
+            if (!res.ok) { alert("Failed to create movement."); return; }
+            const created = await res.json() as { id: number; name: string };
+            resolvedId = created.id;
+            resolvedName = created.name;
+          } else {
+            // Offline: assign a temporary negative id so it's unique locally
+            const tempId = -(Date.now());
+            const slug = input.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+            await addPendingExercise({ slug, name: input });
+            resolvedId = tempId;
+            resolvedName = input;
+          }
           isNew = true;
-          // Add to local list so it appears in dropdown immediately
+          // Add to local list so it appears in dropdown for the rest of the session
           setAllExercises(prev =>
-            prev.find(e => e.id === created.id)
+            prev.find(e => e.name.toLowerCase() === input.toLowerCase())
               ? prev
-              : [...prev, { id: created.id, name: created.name }].sort((a, b) => a.name.localeCompare(b.name))
+              : [...prev, { id: resolvedId!, name: resolvedName! }].sort((a, b) => a.name.localeCompare(b.name))
           );
         }
       }
@@ -482,7 +556,7 @@ export default function SessionForm({
     <>
       {/* Copy modal */}
       {showCopy && (
-        <CopyModal sessions={copySessions} onCopy={applyCopy} onClose={() => setShowCopy(false)} />
+        <CopyModal sessions={copySessions} onCopy={applyCopy} onClose={() => setShowCopy(false)} fromCache={copyFromCache} />
       )}
 
       {/* Header */}
@@ -493,11 +567,6 @@ export default function SessionForm({
           </h1>
         </Link>
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-          <a href="/archive" style={{ textDecoration: "none" }}>
-            <button type="button" style={{ borderRadius: 20, padding: "0.3rem 0.9rem", fontSize: "0.85rem" }}>
-              Archive
-            </button>
-          </a>
           <HelpButton />
           <ThemeToggle />
           <LogoutButton />
@@ -638,7 +707,7 @@ export default function SessionForm({
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "1rem", marginBottom: "0.75rem" }}>
           <label style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "0.5rem" }}>ADD A MOVEMENT</label>
           <select value={selectedExerciseId} onChange={e => addFromDropdown(e.target.value)} style={{ width: "100%", marginBottom: "0.85rem" }}>
-            <option value="">Pick from your {allExercises.length} movements...</option>
+            <option value="">Pick from your movements...</option>
             {allExercises.map(e => <option key={e.id} value={String(e.id)}>{e.name}</option>)}
           </select>
           <label style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "0.5rem" }}>...OR TYPE A NEW ONE</label>
