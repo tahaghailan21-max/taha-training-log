@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { saveDraft, clearDraft, addToOutbox } from "@/lib/idb";
 import { ThemeToggle } from "@/components/ThemeProvider";
 import { formatDate } from "@/lib/format";
@@ -486,9 +487,11 @@ export default function SessionForm({
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.85rem 1rem" }}>
-        <h1 style={{ color: "var(--lime)", fontWeight: 800, fontSize: "1.25rem", letterSpacing: "0.04em" }}>
-          TRAINING LOGS
-        </h1>
+        <Link href="/" style={{ textDecoration: "none" }}>
+          <h1 style={{ color: "var(--lime)", fontWeight: 800, fontSize: "1.25rem", letterSpacing: "0.04em" }}>
+            TRAINING LOGS
+          </h1>
+        </Link>
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
           <a href="/archive" style={{ textDecoration: "none" }}>
             <button type="button" style={{ borderRadius: 20, padding: "0.3rem 0.9rem", fontSize: "0.85rem" }}>
