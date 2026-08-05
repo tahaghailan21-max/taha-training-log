@@ -181,6 +181,32 @@ function SortableSetRowWithHandle({ id, children }: { id: string; children: (han
   );
 }
 
+/* ── Offline saved screen ── */
+function OfflineSavedScreen({ onBack }: { onBack: () => void }) {
+  useEffect(() => {
+    function handleOnline() { onBack(); }
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [onBack]);
+
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--bg)", color: "var(--text)", padding: "2rem", textAlign: "center" }}>
+      <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📥</div>
+      <h2 style={{ color: "var(--lime)", fontWeight: 800, fontSize: "1.3rem", marginBottom: "0.75rem" }}>Saved offline</h2>
+      <p style={{ color: "var(--muted)", fontSize: "0.95rem", lineHeight: 1.6, marginBottom: "2rem", maxWidth: 320 }}>
+        Your session is queued and will sync automatically as soon as you&apos;re back online.
+      </p>
+      <button
+        type="button"
+        onClick={onBack}
+        style={{ borderRadius: 8, padding: "0.75rem 2rem", fontSize: "1rem", fontWeight: 700, background: "var(--lime)", color: "#000", border: "none", cursor: "pointer", letterSpacing: "0.03em" }}
+      >
+        Back to logs
+      </button>
+    </div>
+  );
+}
+
 /* ── Main SessionForm ── */
 export default function SessionForm({
   editId = null,
@@ -201,6 +227,7 @@ export default function SessionForm({
   const [newMovement, setNewMovement] = useState("");
   const [selectedExerciseId, setSelectedExerciseId] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [savedOffline, setSavedOffline] = useState(false);
   const [online, setOnline] = useState(true);
   const [timers, setTimers] = useState<Record<string, number>>({});
   const [runningTimer, setRunningTimer] = useState<string | null>(null);
@@ -522,8 +549,7 @@ export default function SessionForm({
       await addToOutbox(payload);
       await clearDraft();
       setSaving(false);
-      alert("Saved offline. Will sync when back online.");
-      router.replace("/");
+      setSavedOffline(true);
       return;
     }
 
@@ -542,14 +568,20 @@ export default function SessionForm({
       if (!isEdit) {
         await addToOutbox(payload);
         await clearDraft();
-        alert("Saved offline. Will sync when back online.");
-        router.replace("/");
+        setSavedOffline(true);
       } else {
         alert("Failed to save. Please try again.");
       }
     } finally {
       setSaving(false);
     }
+  }
+
+  /* ── Offline saved screen ── */
+  if (savedOffline) {
+    return (
+      <OfflineSavedScreen onBack={() => router.replace("/")} />
+    );
   }
 
   return (
