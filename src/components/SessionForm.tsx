@@ -26,6 +26,7 @@ export type ExerciseEntry = {
   position: number;
   notes: string;
   sets: SetEntry[];
+  isNew?: boolean;
 };
 
 type ExerciseOption = { id: number; name: string };
@@ -276,25 +277,52 @@ export default function SessionForm({
   }
 
   /* ── Exercise management ── */
-  function addExercise(id?: number, name?: string) {
+  async function addExercise(id?: number, name?: string) {
     let resolvedId = id;
     let resolvedName = name;
+    let isNew = false;
+
     if (!resolvedId) {
       const input = newMovement.trim();
       if (!input) return;
       const lower = input.toLowerCase();
+
+      // Check alias map first
       if (aliases[lower]) {
         resolvedId = aliases[lower];
         resolvedName = allExercises.find(e => e.id === aliases[lower])?.name ?? input;
       } else {
+        // Check exact name match in loaded list
         const exact = allExercises.find(e => e.name.toLowerCase() === lower);
-        if (exact) { resolvedId = exact.id; resolvedName = exact.name; }
-        else { alert(`"${input}" not found. Check spelling or pick from the dropdown.`); return; }
+        if (exact) {
+          resolvedId = exact.id;
+          resolvedName = exact.name;
+        } else {
+          // Create it in the DB
+          const res = await fetch("/api/exercises", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: input }),
+          });
+          if (!res.ok) { alert("Failed to create movement."); return; }
+          const created = await res.json() as { id: number; name: string };
+          resolvedId = created.id;
+          resolvedName = created.name;
+          isNew = true;
+          // Add to local list so it appears in dropdown immediately
+          setAllExercises(prev =>
+            prev.find(e => e.id === created.id)
+              ? prev
+              : [...prev, { id: created.id, name: created.name }].sort((a, b) => a.name.localeCompare(b.name))
+          );
+        }
       }
     }
+
     setExerciseList(prev => [...prev, {
       client_id: uuid(), exercise_id: resolvedId!, exercise_name: resolvedName!,
       position: prev.length, notes: "", sets: [emptySet(0)],
+      isNew,
     }]);
     setNewMovement("");
     setSelectedExerciseId("");
@@ -450,7 +478,16 @@ export default function SessionForm({
         {exerciseList.map((ex, exIdx) => (
           <div key={ex.client_id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "1rem", marginBottom: "0.75rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem" }}>
-              <h3 style={{ color: "var(--lime)", fontWeight: 700, fontSize: "1rem", margin: 0 }}>{ex.exercise_name}</h3>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <h3 style={{ color: "var(--lime)", fontWeight: 700, fontSize: "1rem", margin: 0 }}>{ex.exercise_name}</h3>
+                {ex.isNew && (
+                  <span style={{
+                    fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.06em",
+                    background: "var(--lime)", color: "#000",
+                    borderRadius: 4, padding: "0.1rem 0.35rem",
+                  }}>NEW</span>
+                )}
+              </div>
               <button type="button" onClick={() => removeExercise(exIdx)}
                 style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 4, color: "var(--muted)", padding: "0.25rem 0.5rem", cursor: "pointer", fontSize: "0.85rem", lineHeight: 1, display: "flex", alignItems: "center" }}>
                 <FontAwesomeIcon icon={faXmark} style={{ width: 13, height: 13 }} />
