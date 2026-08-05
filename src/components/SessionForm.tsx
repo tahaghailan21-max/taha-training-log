@@ -6,6 +6,7 @@ import { saveDraft, clearDraft, addToOutbox, saveExerciseCache, loadExerciseCach
 import { ThemeToggle } from "@/components/ThemeProvider";
 import { formatDate } from "@/lib/format";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import SecsIncrementPicker from "@/components/SecsIncrementPicker";
 import { faXmark, faRotateLeft, faGripVertical } from "@fortawesome/free-solid-svg-icons";
 import { HelpButton } from "@/components/HelpModal";
 import LogoutButton from "@/components/LogoutButton";
@@ -100,28 +101,31 @@ const SECS_STEPS = [0.5, 1, 5] as const;
 type SecsStep = typeof SECS_STEPS[number];
 
 function SecsStepperWithPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [step, setStep] = useState<SecsStep>(1);
+  const [step, setStep] = useState<number>(1);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const fmt = (n: number) => Number.isInteger(n) ? String(n) : n.toFixed(1);
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.3rem" }}>
       <Stepper label="SECS" value={value} onChange={onChange} step={step} />
-      <div style={{ display: "flex", gap: "0.25rem" }}>
-        {SECS_STEPS.map(s => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setStep(s)}
-            style={{
-              flex: 1, fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.04em",
-              padding: "0.2rem 0", border: "1px solid var(--border)", borderRadius: 4,
-              background: step === s ? "var(--lime)" : "transparent",
-              color: step === s ? "#000" : "var(--muted)",
-              cursor: "pointer",
-            }}
-          >
-            {s === 0.5 ? "½s" : `${s}s`}
-          </button>
-        ))}
-      </div>
+      <button
+        type="button"
+        onClick={() => setPickerOpen(true)}
+        style={{
+          fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.04em",
+          padding: "0.22rem 0", border: "1px solid var(--border)", borderRadius: 4,
+          background: "transparent", color: "var(--lime)", cursor: "pointer",
+          width: "100%",
+        }}
+      >
+        step: {step === 0.5 ? "0.5s" : `${step}s`} ▾
+      </button>
+      {pickerOpen && (
+        <SecsIncrementPicker
+          selected={step}
+          onSelect={v => setStep(v)}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }

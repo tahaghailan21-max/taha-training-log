@@ -99,6 +99,15 @@ export const sets = pgTable("sets", {
   note: text("note"),
 });
 
+// ── user_secs_increments ──────────────────────────────────────────────────────
+export const userSecsIncrements = pgTable("user_secs_increments", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  user_id: bigint("user_id", { mode: "number" })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  value: numeric("value").notNull(),
+});
+
 // ── bodyweight ────────────────────────────────────────────────────────────────
 export const bodyweight = pgTable("bodyweight", {
   measured_on: date("measured_on").primaryKey(),
@@ -134,3 +143,4 @@ export type SessionExercise = typeof sessionExercises.$inferSelect;
 export type Set = typeof sets.$inferSelect;
 export type Bodyweight = typeof bodyweight.$inferSelect;
 export type User = typeof users.$inferSelect;
+export type UserSecsIncrement = typeof userSecsIncrements.$inferSelect;
