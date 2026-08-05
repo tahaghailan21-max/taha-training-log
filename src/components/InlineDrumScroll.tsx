@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useCallback } from "react";
 
-const ITEM_H = 36;
+const ITEM_H = 28;
 const VISIBLE = 3;
 const COPIES = 20; // how many times we repeat the list for infinite feel
 
@@ -86,22 +86,22 @@ export default function InlineDrumScroll({ items, selected, onSelect }: Props) {
     <div style={{
       position: "relative",
       height: ITEM_H * VISIBLE,
-      width: 56,
+      width: 44,
       overflow: "hidden",
-      borderRadius: 8,
-      background: "var(--surface2)",
+      borderRadius: 6,
+      background: "transparent",
       border: "1px solid var(--border)",
       flexShrink: 0,
     }}>
-      {/* Centre highlight */}
+      {/* Centre highlight — border only, no fill */}
       <div style={{
         position: "absolute",
         left: 0, right: 0,
         top: ITEM_H,
         height: ITEM_H,
-        background: "var(--surface)",
+        background: "transparent",
         border: "1px solid var(--lime)",
-        borderRadius: 6,
+        borderRadius: 4,
         pointerEvents: "none",
         zIndex: 2,
       }} />
@@ -110,7 +110,7 @@ export default function InlineDrumScroll({ items, selected, onSelect }: Props) {
       <div style={{
         position: "absolute", top: 0, left: 0, right: 0,
         height: ITEM_H,
-        background: "linear-gradient(to bottom, var(--surface2), transparent)",
+        background: "linear-gradient(to bottom, var(--bg), transparent)",
         pointerEvents: "none", zIndex: 3,
       }} />
 
@@ -118,7 +118,7 @@ export default function InlineDrumScroll({ items, selected, onSelect }: Props) {
       <div style={{
         position: "absolute", bottom: 0, left: 0, right: 0,
         height: ITEM_H,
-        background: "linear-gradient(to top, var(--surface2), transparent)",
+        background: "linear-gradient(to top, var(--bg), transparent)",
         pointerEvents: "none", zIndex: 3,
       }} />
 
@@ -151,7 +151,7 @@ export default function InlineDrumScroll({ items, selected, onSelect }: Props) {
                   height: ITEM_H,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   cursor: "pointer",
-                  fontSize: isSelected ? "0.82rem" : "0.75rem",
+                  fontSize: isSelected ? "0.72rem" : "0.65rem",
                   fontWeight: isSelected ? 800 : 500,
                   color: isSelected ? "var(--lime)" : "var(--muted)",
                   opacity,

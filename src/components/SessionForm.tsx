@@ -664,12 +664,12 @@ export default function SessionForm({
                               <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>How long in seconds</div>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                              <Stepper label="" value={s.duration_sec} onChange={v => updateSet(exIdx, setIdx, "duration_sec", v)} step={secsSteps[s.client_id] ?? 1} />
                               <InlineDrumScroll
                                 items={[0.5, 1, 5]}
                                 selected={secsSteps[s.client_id] ?? 1}
                                 onSelect={v => setSecsSteps(prev => ({ ...prev, [s.client_id]: v }))}
                               />
-                              <Stepper label="" value={s.duration_sec} onChange={v => updateSet(exIdx, setIdx, "duration_sec", v)} step={secsSteps[s.client_id] ?? 1} />
                             </div>
                           </div>
 
