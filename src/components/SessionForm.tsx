@@ -5,9 +5,25 @@ import { saveDraft, clearDraft, addToOutbox } from "@/lib/idb";
 import { ThemeToggle } from "@/components/ThemeProvider";
 import { formatDate } from "@/lib/format";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faXmark, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
+import { faXmark, faRotateLeft, faGripVertical } from "@fortawesome/free-solid-svg-icons";
 import { HelpButton } from "@/components/HelpModal";
 import LogoutButton from "@/components/LogoutButton";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 /* ── Types ── */
 export type SetEntry = {
@@ -129,6 +145,34 @@ function CopyModal({
   );
 }
 
+/* ── Sortable set row with exposed handle ── */
+function SortableSetRowWithHandle({ id, children }: { id: string; children: (handle: React.ReactNode) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const handle = (
+    <span
+      {...listeners}
+      {...attributes}
+      style={{ cursor: "grab", color: "var(--muted)", touchAction: "none", display: "inline-flex", alignItems: "center" }}
+      aria-label="Drag to reorder"
+    >
+      <FontAwesomeIcon icon={faGripVertical} style={{ width: 12, height: 12 }} />
+    </span>
+  );
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        marginBottom: "0.85rem",
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+      }}
+    >
+      {children(handle)}
+    </div>
+  );
+}
+
 /* ── Main SessionForm ── */
 export default function SessionForm({
   editId = null,
@@ -157,6 +201,12 @@ export default function SessionForm({
   const [copySessions, setCopySessions] = useState<CopySession[]>([]);
 
   const isEdit = editId != null;
+
+  // dnd-kit sensors — pointer for mouse, touch for mobile
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  );
 
   useEffect(() => {
     fetch("/api/exercises").then(r => r.json()).then(({ exercises, aliases: raw }) => {
@@ -350,6 +400,15 @@ export default function SessionForm({
       i === exIdx ? { ...e, sets: e.sets.filter((_, si) => si !== setIdx) } : e
     ));
   }
+  function reorderSets(exIdx: number, activeId: string, overId: string) {
+    setExerciseList(prev => prev.map((e, i) => {
+      if (i !== exIdx) return e;
+      const oldIdx = e.sets.findIndex(s => s.client_id === activeId);
+      const newIdx = e.sets.findIndex(s => s.client_id === overId);
+      if (oldIdx === -1 || newIdx === -1) return e;
+      return { ...e, sets: arrayMove(e.sets, oldIdx, newIdx) };
+    }));
+  }
   function updateSet(exIdx: number, setIdx: number, field: keyof SetEntry, value: string) {
     setExerciseList(prev => prev.map((e, i) =>
       i === exIdx ? { ...e, sets: e.sets.map((s, si) => si === setIdx ? { ...s, [field]: value } : s) } : e
@@ -499,46 +558,66 @@ export default function SessionForm({
               </button>
             </div>
 
-            {ex.sets.map((s, setIdx) => {
-              const timerKey = `${ex.client_id}-${setIdx}`;
-              const timerVal = timers[timerKey] ?? 0;
-              const isRunning = runningTimer === timerKey;
-              return (
-                <div key={s.client_id} style={{ marginBottom: "0.85rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
-                    <span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>{setIdx + 1}</span>
-                    {ex.sets.length > 1 && (
-                      <button type="button" onClick={() => removeSet(exIdx, setIdx)}
-                        aria-label="Remove set"
-                        style={{ background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer", padding: "0 0.2rem", fontSize: "0.85rem", lineHeight: 1 }}>
-                        ×
-                      </button>
-                    )}
-                  </div>
-                  <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                    <Stepper label="REPS" value={s.reps} onChange={v => updateSet(exIdx, setIdx, "reps", v)} />
-                    <Stepper label="SECS" value={s.duration_sec} onChange={v => updateSet(exIdx, setIdx, "duration_sec", v)} />
-                  </div>
-                  <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                    <Stepper label="SETS" value={s.set_count} onChange={v => updateSet(exIdx, setIdx, "set_count", v)} />
-                    <button type="button" onClick={() => toggleTimer(timerKey)}
-                      style={{
-                        flex: 1, background: "var(--surface2)",
-                        border: isRunning ? "1px solid var(--lime)" : "1px solid var(--border)",
-                        borderRadius: 6, color: "var(--lime)", cursor: "pointer", fontSize: "0.85rem",
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem",
-                        padding: "0.45rem 0.5rem", fontWeight: 600,
-                      }}>
-                      <span>⏱</span>
-                      {isRunning
-                        ? `${String(Math.floor(timerVal / 60)).padStart(2, "0")}:${String(timerVal % 60).padStart(2, "0")}`
-                        : "Time it"}
-                    </button>
-                  </div>
-                  <input type="text" placeholder="note" value={s.note} onChange={e => updateSet(exIdx, setIdx, "note", e.target.value)} style={{ width: "100%" }} />
-                </div>
-              );
-            })}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(event: DragEndEvent) => {
+                const { active, over } = event;
+                if (over && active.id !== over.id) {
+                  reorderSets(exIdx, String(active.id), String(over.id));
+                }
+              }}
+            >
+              <SortableContext items={ex.sets.map(s => s.client_id)} strategy={verticalListSortingStrategy}>
+                {ex.sets.map((s, setIdx) => {
+                  const timerKey = `${ex.client_id}-${setIdx}`;
+                  const timerVal = timers[timerKey] ?? 0;
+                  const isRunning = runningTimer === timerKey;
+                  return (
+                    <SortableSetRowWithHandle key={s.client_id} id={s.client_id}>
+                      {(handle) => (
+                        <>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                              {handle}
+                              <span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>{setIdx + 1}</span>
+                            </div>
+                            {ex.sets.length > 1 && (
+                              <button type="button" onClick={() => removeSet(exIdx, setIdx)}
+                                aria-label="Remove set"
+                                style={{ background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer", padding: "0 0.2rem", fontSize: "0.85rem", lineHeight: 1 }}>
+                                ×
+                              </button>
+                            )}
+                          </div>
+                          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                            <Stepper label="REPS" value={s.reps} onChange={v => updateSet(exIdx, setIdx, "reps", v)} />
+                            <Stepper label="SECS" value={s.duration_sec} onChange={v => updateSet(exIdx, setIdx, "duration_sec", v)} />
+                          </div>
+                          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                            <Stepper label="SETS" value={s.set_count} onChange={v => updateSet(exIdx, setIdx, "set_count", v)} />
+                            <button type="button" onClick={() => toggleTimer(timerKey)}
+                              style={{
+                                flex: 1, background: "var(--surface2)",
+                                border: isRunning ? "1px solid var(--lime)" : "1px solid var(--border)",
+                                borderRadius: 6, color: "var(--lime)", cursor: "pointer", fontSize: "0.85rem",
+                                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem",
+                                padding: "0.45rem 0.5rem", fontWeight: 600,
+                              }}>
+                              <span>⏱</span>
+                              {isRunning
+                                ? `${String(Math.floor(timerVal / 60)).padStart(2, "0")}:${String(timerVal % 60).padStart(2, "0")}`
+                                : "Time it"}
+                            </button>
+                          </div>
+                          <input type="text" placeholder="note" value={s.note} onChange={e => updateSet(exIdx, setIdx, "note", e.target.value)} style={{ width: "100%" }} />
+                        </>
+                      )}
+                    </SortableSetRowWithHandle>
+                  );
+                })}
+              </SortableContext>
+            </DndContext>
 
             <button type="button" onClick={() => addSet(exIdx)}
               style={{ borderRadius: 20, padding: "0.3rem 1rem", fontSize: "0.85rem", border: "1px solid var(--border)", background: "transparent", color: "var(--text)", cursor: "pointer", marginBottom: "0.85rem" }}>
