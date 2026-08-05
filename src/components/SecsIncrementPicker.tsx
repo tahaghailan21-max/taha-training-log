@@ -5,16 +5,18 @@ const ITEM_H = 52;
 
 type IncrementItem = { id: number | null; value: number };
 
-const BUILT_IN: IncrementItem[] = [
-  { id: null, value: 0.5 },
-  { id: null, value: 1 },
-  { id: null, value: 5 },
-];
+const BUILT_IN_VALUES = new Set([0.5, 1, 5]);
 
 interface Props {
   selected: number;
+  /** All available increments (built-ins + custom), sorted ascending */
+  increments: number[];
   onSelect: (value: number) => void;
   onClose: () => void;
+  /** Called after a new increment is successfully saved to the DB */
+  onIncrementAdded?: (value: number) => void;
+  /** Called after an increment is deleted from the DB */
+  onIncrementDeleted?: (value: number) => void;
 }
 
 function fmt(n: number) {
@@ -37,7 +39,6 @@ function DrumRoll({
     return i === -1 ? 0 : i;
   });
 
-  // On mount: scroll to selected without animation
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -45,7 +46,6 @@ function DrumRoll({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // When items list changes (e.g. custom added), re-sync scroll
   useEffect(() => {
     const idx = items.findIndex(x => x.value === selectedValue);
     if (idx === -1) return;
@@ -62,7 +62,6 @@ function DrumRoll({
       const rawIdx = el.scrollTop / ITEM_H;
       const idx = Math.round(rawIdx);
       const clamped = Math.max(0, Math.min(idx, items.length - 1));
-      // Snap
       el.scrollTo({ top: clamped * ITEM_H, behavior: "smooth" });
       setActiveIdx(clamped);
       onSelect(items[clamped].value);
@@ -77,50 +76,31 @@ function DrumRoll({
       borderRadius: 12,
       background: "var(--surface2)",
     }}>
-      {/* Centre highlight */}
       <div style={{
-        position: "absolute",
-        left: 12, right: 12,
-        top: ITEM_H * 2,
-        height: ITEM_H,
-        borderRadius: 8,
-        border: "2px solid var(--lime)",
-        pointerEvents: "none",
-        zIndex: 2,
+        position: "absolute", left: 12, right: 12, top: ITEM_H * 2, height: ITEM_H,
+        borderRadius: 8, border: "2px solid var(--lime)",
+        pointerEvents: "none", zIndex: 2,
       }} />
-
-      {/* Top fade */}
       <div style={{
-        position: "absolute", top: 0, left: 0, right: 0,
-        height: ITEM_H * 2,
+        position: "absolute", top: 0, left: 0, right: 0, height: ITEM_H * 2,
         background: "linear-gradient(to bottom, var(--surface2) 0%, transparent 100%)",
         pointerEvents: "none", zIndex: 3,
       }} />
-
-      {/* Bottom fade */}
       <div style={{
-        position: "absolute", bottom: 0, left: 0, right: 0,
-        height: ITEM_H * 2,
+        position: "absolute", bottom: 0, left: 0, right: 0, height: ITEM_H * 2,
         background: "linear-gradient(to top, var(--surface2) 0%, transparent 100%)",
         pointerEvents: "none", zIndex: 3,
       }} />
-
-      {/* Scroll container */}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
         style={{
           position: "absolute", inset: 0,
-          overflowY: "scroll",
-          scrollbarWidth: "none",
-          // Pad so first/last items can centre
-          paddingTop: ITEM_H * 2,
-          paddingBottom: ITEM_H * 2,
+          overflowY: "scroll", scrollbarWidth: "none",
+          paddingTop: ITEM_H * 2, paddingBottom: ITEM_H * 2,
         }}
       >
-        <style>{`
-          .drum-scroll::-webkit-scrollbar { display: none; }
-        `}</style>
+        <style>{`.drum-scroll::-webkit-scrollbar { display: none; }`}</style>
         <div className="drum-scroll">
           {items.map((item, i) => {
             const dist = Math.abs(i - activeIdx);
@@ -137,11 +117,8 @@ function DrumRoll({
                 }}
                 style={{
                   height: ITEM_H,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  userSelect: "none",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", userSelect: "none",
                   fontSize: dist === 0 ? "1.2rem" : "1rem",
                   fontWeight: dist === 0 ? 800 : 500,
                   color: dist === 0 ? "var(--lime)" : "var(--text)",
@@ -160,24 +137,36 @@ function DrumRoll({
   );
 }
 
-export default function SecsIncrementPicker({ selected, onSelect, onClose }: Props) {
-  const [custom, setCustom] = useState<IncrementItem[]>([]);
+export default function SecsIncrementPicker({
+  selected,
+  increments,
+  onSelect,
+  onClose,
+  onIncrementAdded,
+  onIncrementDeleted,
+}: Props) {
+  // Map values back to {id, value} — we fetch ids only for custom ones so we can delete them
+  const [customIds, setCustomIds] = useState<Record<number, number>>({});
   const [input, setInput] = useState("");
   const [adding, setAdding] = useState(false);
   const [localSelected, setLocalSelected] = useState(selected);
 
+  // Fetch ids for the custom increments so we can delete them
   useEffect(() => {
     fetch("/api/secs-increments")
       .then(r => r.json())
-      .then((rows: { id: number; value: number }[]) => setCustom(rows))
+      .then((rows: { id: number; value: number }[]) => {
+        const map: Record<number, number> = {};
+        for (const row of rows) map[row.value] = row.id;
+        setCustomIds(map);
+      })
       .catch(() => {});
   }, []);
 
-  const builtInValues = new Set(BUILT_IN.map(b => b.value));
-  const allOptions: IncrementItem[] = [
-    ...BUILT_IN,
-    ...custom.filter(c => !builtInValues.has(c.value)).sort((a, b) => a.value - b.value),
-  ];
+  const allItems: IncrementItem[] = increments.map(v => ({
+    id: customIds[v] ?? null,
+    value: v,
+  }));
 
   async function handleAdd() {
     const val = parseFloat(input);
@@ -190,24 +179,29 @@ export default function SecsIncrementPicker({ selected, onSelect, onClose }: Pro
         body: JSON.stringify({ value: val }),
       });
       const row = await res.json() as { id: number; value: number };
-      setCustom(prev => prev.find(c => c.id === row.id) ? prev : [...prev, { id: row.id, value: row.value }]);
+      setCustomIds(prev => ({ ...prev, [row.value]: row.id }));
       setInput("");
       setLocalSelected(row.value);
+      onIncrementAdded?.(row.value);
     } finally {
       setAdding(false);
     }
   }
 
-  async function handleDelete(item: IncrementItem) {
-    if (!item.id) return;
+  async function handleDelete(value: number) {
+    const id = customIds[value];
+    if (!id) return;
     await fetch("/api/secs-increments", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: item.id }),
+      body: JSON.stringify({ id }),
     });
-    setCustom(prev => prev.filter(c => c.id !== item.id));
-    if (localSelected === item.value) setLocalSelected(1);
+    setCustomIds(prev => { const n = { ...prev }; delete n[value]; return n; });
+    if (localSelected === value) setLocalSelected(1);
+    onIncrementDeleted?.(value);
   }
+
+  const customValues = increments.filter(v => !BUILT_IN_VALUES.has(v));
 
   return (
     <>
@@ -225,20 +219,20 @@ export default function SecsIncrementPicker({ selected, onSelect, onClose }: Pro
           SECS INCREMENT
         </h3>
 
-        <DrumRoll items={allOptions} selectedValue={localSelected} onSelect={setLocalSelected} />
+        <DrumRoll items={allItems} selectedValue={localSelected} onSelect={setLocalSelected} />
 
-        {/* Custom chips */}
-        {custom.filter(c => !builtInValues.has(c.value)).length > 0 && (
+        {/* Custom value chips with delete */}
+        {customValues.length > 0 && (
           <div style={{ marginTop: "0.75rem", display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-            {custom.filter(c => !builtInValues.has(c.value)).map(item => (
-              <div key={item.id} style={{
+            {customValues.map(v => (
+              <div key={v} style={{
                 display: "flex", alignItems: "center", gap: "0.3rem",
                 background: "var(--surface2)", border: "1px solid var(--border)",
                 borderRadius: 20, padding: "0.2rem 0.6rem 0.2rem 0.75rem",
                 fontSize: "0.8rem", color: "var(--muted)",
               }}>
-                {fmt(item.value)}
-                <button type="button" onClick={() => handleDelete(item)}
+                {fmt(v)}
+                <button type="button" onClick={() => handleDelete(v)}
                   style={{ background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer", padding: 0, lineHeight: 1, fontSize: "0.95rem" }}>
                   ×
                 </button>

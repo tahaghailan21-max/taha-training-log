@@ -8,7 +8,7 @@ import {
   faCircleQuestion,
 } from "@fortawesome/free-solid-svg-icons";
 import { useTheme } from "@/components/ThemeProvider";
-import { HelpButton } from "@/components/HelpModal";
+import { HelpModal } from "@/components/HelpModal";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -72,10 +72,8 @@ export default function HeaderMenu() {
 
   return (
     <>
-      {/* HelpButton rendered invisibly — just needs to be mounted to show modal */}
-      <div style={{ position: "fixed", width: 0, height: 0, overflow: "hidden", zIndex: -1 }}>
-        <HelpButton open={helpOpen} onOpenChange={v => setHelpOpen(v)} />
-      </div>
+      {/* Help modal rendered at top level so it's not clipped */}
+      <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
 
       <div ref={menuRef} style={{ position: "relative" }}>
         {/* Hamburger */}

@@ -6,6 +6,7 @@ import { saveDraft, clearDraft, addToOutbox, saveExerciseCache, loadExerciseCach
 import { formatDate } from "@/lib/format";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import InlineDrumScroll from "@/components/InlineDrumScroll";
+import SecsIncrementPicker from "@/components/SecsIncrementPicker";
 import HeaderMenu from "@/components/HeaderMenu";
 import { faXmark, faRotateLeft, faGripVertical } from "@fortawesome/free-solid-svg-icons";
 import {
@@ -231,6 +232,8 @@ export default function SessionForm({
   const [savedOffline, setSavedOffline] = useState(false);
   const [online, setOnline] = useState(true);
   const [secsSteps, setSecsSteps] = useState<Record<string, number>>({});
+  const [secsIncrements, setSecsIncrements] = useState<number[]>([0.5, 1, 5]);
+  const [pickerOpenFor, setPickerOpenFor] = useState<string | null>(null);
   const [showCopy, setShowCopy] = useState(false);
   const [copySessions, setCopySessions] = useState<CopySession[]>([]);
   const [copyFromCache, setCopyFromCache] = useState(false);
@@ -301,7 +304,21 @@ export default function SessionForm({
     };
   }, []);
 
-  /* ── Copy session ── */
+  useEffect(() => {
+    fetch("/api/secs-increments")
+      .then(r => r.json())
+      .then((rows: { id: number; value: number }[]) => {
+        if (!Array.isArray(rows) || rows.length === 0) return;
+        const BUILT_IN = [0.5, 1, 5];
+        const builtInSet = new Set(BUILT_IN);
+        const merged = [
+          ...BUILT_IN,
+          ...rows.map(r => r.value).filter(v => !builtInSet.has(v)),
+        ].sort((a, b) => a - b);
+        setSecsIncrements(merged);
+      })
+      .catch(() => {}); // offline — keep defaults
+  }, []);
   async function openCopy() {
     let sessions: { id: number; performed_on: string; title: string | null; exercises: { exercise_name: string; notes: string | null; sets: { reps: number | null; duration_sec: string | null; set_count: number | null; note: string | null }[] }[] }[] = [];
     let fromCache = false;
@@ -648,39 +665,86 @@ export default function SessionForm({
                             )}
                           </div>
 
-                          {/* Reps row */}
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
-                            <div>
-                              <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>Reps</div>
-                              <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>How many times</div>
-                            </div>
-                            <Stepper label="" value={s.reps} onChange={v => updateSet(exIdx, setIdx, "reps", v)} />
-                          </div>
+                          {/* Reps / Secs / Sets — wrapped in a relative container.
+                              paddingRight reserves 52px for the step-picker button so all
+                              three steppers right-align to the same edge. */}
+                          <div style={{ position: "relative", paddingRight: 52 }}>
 
-                          {/* Secs row with inline drum scroll */}
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
-                            <div>
-                              <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>Secs</div>
-                              <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>How long in seconds</div>
+                            {/* Reps row */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
+                              <div>
+                                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>Reps</div>
+                                <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>How many times</div>
+                              </div>
+                              <Stepper label="" value={s.reps} onChange={v => updateSet(exIdx, setIdx, "reps", v)} />
                             </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+
+                            {/* Secs row */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
+                              <div>
+                                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>Secs</div>
+                                <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>How long in seconds</div>
+                              </div>
                               <Stepper label="" value={s.duration_sec} onChange={v => updateSet(exIdx, setIdx, "duration_sec", v)} step={secsSteps[s.client_id] ?? 1} />
-                              <InlineDrumScroll
-                                items={[0.5, 1, 5]}
-                                selected={secsSteps[s.client_id] ?? 1}
-                                onSelect={v => setSecsSteps(prev => ({ ...prev, [s.client_id]: v }))}
-                              />
                             </div>
+
+                            {/* Sets row */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
+                              <div>
+                                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>Sets</div>
+                                <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>Identical sets to log</div>
+                              </div>
+                              <Stepper label="" value={s.set_count} onChange={v => updateSet(exIdx, setIdx, "set_count", v)} />
+                            </div>
+
+                            {/* Step picker tap target — floats in the right gutter, centred on the Secs row */}
+                            <button
+                              type="button"
+                              onClick={() => setPickerOpenFor(s.client_id)}
+                              title="Change step size"
+                              style={{
+                                position: "absolute",
+                                right: 0,
+                                top: "50%",
+                                transform: "translateY(-50%)",
+                                width: 44,
+                                height: 44,
+                                borderRadius: 8,
+                                border: "1px solid var(--lime)",
+                                background: "transparent",
+                                cursor: "pointer",
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 1,
+                                padding: 0,
+                              }}
+                            >
+                              <span style={{ fontSize: "0.65rem", fontWeight: 800, color: "var(--lime)", lineHeight: 1 }}>
+                                {(() => { const v = secsSteps[s.client_id] ?? 1; return `${v}s`; })()}
+                              </span>
+                              <span style={{ fontSize: "0.55rem", color: "var(--muted)", lineHeight: 1 }}>step</span>
+                            </button>
+
                           </div>
 
-                          {/* Sets row */}
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
-                            <div>
-                              <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>Sets</div>
-                              <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>Identical sets to log</div>
-                            </div>
-                            <Stepper label="" value={s.set_count} onChange={v => updateSet(exIdx, setIdx, "set_count", v)} />
-                          </div>
+                          {/* Secs increment picker sheet */}
+                          {pickerOpenFor === s.client_id && (
+                            <SecsIncrementPicker
+                              selected={secsSteps[s.client_id] ?? 1}
+                              increments={secsIncrements}
+                              onIncrementAdded={v => setSecsIncrements(prev =>
+                                prev.includes(v) ? prev : [...prev, v].sort((a, b) => a - b)
+                              )}
+                              onIncrementDeleted={v => setSecsIncrements(prev => prev.filter(x => x !== v))}
+                              onSelect={v => {
+                                setSecsSteps(prev => ({ ...prev, [s.client_id]: v }));
+                                setPickerOpenFor(null);
+                              }}
+                              onClose={() => setPickerOpenFor(null)}
+                            />
+                          )}
 
                           {/* Note */}
                           <input type="text" placeholder="Note for this set..." value={s.note} onChange={e => updateSet(exIdx, setIdx, "note", e.target.value)} style={{ width: "100%" }} />
