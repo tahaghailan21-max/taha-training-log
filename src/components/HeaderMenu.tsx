@@ -6,13 +6,16 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBars, faXmark, faMoon, faSun,
   faRightFromBracket, faDownload, faArrowUpFromBracket,
-  faCircleQuestion, faComment,
+  faCircleQuestion, faComment, faInbox,
 } from "@fortawesome/free-solid-svg-icons";
 import { useTheme } from "@/components/ThemeProvider";
 import { useT } from "@/components/LanguageProvider";
 import { LANGUAGES } from "@/lib/i18n";
 import { HelpModal } from "@/components/HelpModal";
 import FeedbackModal from "@/components/FeedbackModal";
+import FeedbackListModal from "@/components/FeedbackListModal";
+
+const ADMIN_USER_ID = 1;
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -23,6 +26,8 @@ export default function HeaderMenu() {
   const [open, setOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackListOpen, setFeedbackListOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const { theme, toggle } = useTheme();
   const { t, lang, setLang } = useT();
@@ -45,15 +50,25 @@ export default function HeaderMenu() {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
+  // Fetch current user id to know if taha is logged in
+  useEffect(() => {
+    fetch("/api/feedback")
+      .then(r => {
+        // If 200 → we're the admin; if 403 → not admin
+        setCurrentUserId(r.ok ? ADMIN_USER_ID : 0);
+      })
+      .catch(() => setCurrentUserId(0));
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     function handle(e: MouseEvent) {
-      if (helpOpen || feedbackOpen) return;
+      if (helpOpen || feedbackOpen || feedbackListOpen) return;
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
-  }, [open, helpOpen, feedbackOpen]);
+  }, [open, helpOpen, feedbackOpen, feedbackListOpen]);
 
   async function handleLogout() {
     setOpen(false);
@@ -74,11 +89,13 @@ export default function HeaderMenu() {
   }
 
   const showInstall = !installed && (!!deferredPrompt || isIOS);
+  const isAdmin = currentUserId === ADMIN_USER_ID;
 
   return (
     <>
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      <FeedbackListModal open={feedbackListOpen} onClose={() => setFeedbackListOpen(false)} />
 
       <div ref={menuRef} style={{ position: "relative" }}>
         {/* Hamburger */}
@@ -96,10 +113,12 @@ export default function HeaderMenu() {
           <FontAwesomeIcon icon={open ? faXmark : faBars} style={{ width: 16, height: 16 }} />
         </button>
 
-        {/* Dropdown */}
+        {/* Dropdown — insetInlineEnd instead of right so RTL works correctly */}
         {open && (
           <div style={{
-            position: "absolute", top: "calc(100% + 8px)", right: 0,
+            position: "absolute", top: "calc(100% + 8px)",
+            insetInlineEnd: 0,          // anchors to trailing edge in both LTR & RTL
+            insetInlineStart: "auto",   // prevent browser from also setting start
             background: "var(--surface)", border: "1px solid var(--border)",
             borderRadius: 12, minWidth: 240, zIndex: 200,
             boxShadow: "0 8px 32px rgba(0,0,0,0.35)", overflow: "hidden",
@@ -150,13 +169,23 @@ export default function HeaderMenu() {
               onClick={() => setHelpOpen(true)}
             />
 
-            {/* Feedback */}
+            {/* Send feedback */}
             <MenuItem
               icon={<FontAwesomeIcon icon={faComment} style={{ width: 15, height: 15 }} />}
               label={t.feedback}
               sublabel={t.feedbackSub}
               onClick={() => { setOpen(false); setFeedbackOpen(true); }}
             />
+
+            {/* Admin: view all feedbacks — only visible to taha */}
+            {isAdmin && (
+              <MenuItem
+                icon={<FontAwesomeIcon icon={faInbox} style={{ width: 15, height: 15 }} />}
+                label="User feedbacks"
+                sublabel="See what everyone sent"
+                onClick={() => { setOpen(false); setFeedbackListOpen(true); }}
+              />
+            )}
 
             {showInstall && (
               <>
@@ -185,14 +214,15 @@ export default function HeaderMenu() {
           <>
             <div onClick={() => setShowIOSTip(false)} style={{ position: "fixed", inset: 0, zIndex: 199 }} />
             <div style={{
-              position: "absolute", top: "calc(100% + 8px)", right: 0,
+              position: "absolute", top: "calc(100% + 8px)",
+              insetInlineEnd: 0, insetInlineStart: "auto",
               background: "var(--surface)", border: "1px solid var(--border)",
               borderRadius: 10, padding: "0.85rem 1rem",
               width: 230, zIndex: 200,
               fontSize: "0.82rem", color: "var(--text)", lineHeight: 1.5,
               boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
             }}>
-              <div style={{ position: "absolute", top: -7, right: 12, width: 12, height: 12, background: "var(--surface)", border: "1px solid var(--border)", borderBottom: "none", borderRight: "none", transform: "rotate(45deg)" }} />
+              <div style={{ position: "absolute", top: -7, insetInlineEnd: 12, width: 12, height: 12, background: "var(--surface)", border: "1px solid var(--border)", borderBottom: "none", borderRight: "none", transform: "rotate(45deg)" }} />
               <p style={{ margin: "0 0 0.5rem", fontWeight: 700 }}>{t.addToHome}</p>
               <p style={{ margin: 0, color: "var(--muted)" }}>
                 Tap <FontAwesomeIcon icon={faArrowUpFromBracket} style={{ width: 12, height: 12, margin: "0 2px" }} /> <strong>Share</strong> at the bottom of Safari, then <strong>&quot;{t.addToHome}&quot;</strong>.
