@@ -5,7 +5,7 @@ import Link from "next/link";
 import { saveDraft, clearDraft, addToOutbox, saveExerciseCache, loadExerciseCache, loadRecentSessions, addPendingExercise } from "@/lib/idb";
 import { formatDate } from "@/lib/format";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import SecsIncrementPicker from "@/components/SecsIncrementPicker";
+import InlineDrumScroll from "@/components/InlineDrumScroll";
 import HeaderMenu from "@/components/HeaderMenu";
 import { faXmark, faRotateLeft, faGripVertical } from "@fortawesome/free-solid-svg-icons";
 import {
@@ -76,8 +76,9 @@ function Stepper({ label, value, onChange, step = 1 }: { label: string; value: s
   const fmt = (n: number) => Number.isInteger(n) ? String(n) : n.toFixed(1);
   return (
     <div style={{
-      flex: 1, background: "var(--surface2)", borderRadius: 6, padding: "0.45rem 0.5rem",
+      background: "var(--surface2)", borderRadius: 6, padding: "0.45rem 0.5rem",
       display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.25rem",
+      minWidth: 110,
     }}>
       <button type="button" onClick={() => onChange(fmt(Math.max(0, num - step)))}
         style={{ background: "transparent", border: "none", color: "var(--text)", fontSize: "1.1rem", padding: "0 0.4rem", cursor: "pointer", lineHeight: 1 }}>
@@ -85,45 +86,12 @@ function Stepper({ label, value, onChange, step = 1 }: { label: string; value: s
       </button>
       <div style={{ textAlign: "center", flex: 1 }}>
         <div style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text)", lineHeight: 1.2 }}>{value}</div>
-        <div style={{ fontSize: "0.6rem", color: "var(--muted)", letterSpacing: "0.08em", marginTop: 2 }}>{label}</div>
+        {label && <div style={{ fontSize: "0.6rem", color: "var(--muted)", letterSpacing: "0.08em", marginTop: 2 }}>{label}</div>}
       </div>
       <button type="button" onClick={() => onChange(fmt(num + step))}
         style={{ background: "transparent", border: "none", color: "var(--lime)", fontSize: "1.1rem", padding: "0 0.4rem", cursor: "pointer", lineHeight: 1 }}>
         +
       </button>
-    </div>
-  );
-}
-
-const SECS_STEPS = [0.5, 1, 5] as const;
-type SecsStep = typeof SECS_STEPS[number];
-
-function SecsStepperWithPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [step, setStep] = useState<number>(1);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const fmt = (n: number) => Number.isInteger(n) ? String(n) : n.toFixed(1);
-  return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-      <Stepper label="SECS" value={value} onChange={onChange} step={step} />
-      <button
-        type="button"
-        onClick={() => setPickerOpen(true)}
-        style={{
-          fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.04em",
-          padding: "0.22rem 0", border: "1px solid var(--border)", borderRadius: 4,
-          background: "transparent", color: "var(--lime)", cursor: "pointer",
-          width: "100%",
-        }}
-      >
-        step: {step === 0.5 ? "0.5s" : `${step}s`} ▾
-      </button>
-      {pickerOpen && (
-        <SecsIncrementPicker
-          selected={step}
-          onSelect={v => setStep(v)}
-          onClose={() => setPickerOpen(false)}
-        />
-      )}
     </div>
   );
 }
@@ -262,6 +230,7 @@ export default function SessionForm({
   const [saving, setSaving] = useState(false);
   const [savedOffline, setSavedOffline] = useState(false);
   const [online, setOnline] = useState(true);
+  const [secsSteps, setSecsSteps] = useState<Record<string, number>>({});
   const [showCopy, setShowCopy] = useState(false);
   const [copySessions, setCopySessions] = useState<CopySession[]>([]);
   const [copyFromCache, setCopyFromCache] = useState(false);
@@ -665,10 +634,10 @@ export default function SessionForm({
                     <SortableSetRowWithHandle key={s.client_id} id={s.client_id}>
                       {(handle) => (
                         <>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                               {handle}
-                              <span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>{setIdx + 1}</span>
+                              <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)" }}>#{setIdx + 1}</span>
                             </div>
                             {ex.sets.length > 1 && (
                               <button type="button" onClick={() => removeSet(exIdx, setIdx)}
@@ -678,12 +647,43 @@ export default function SessionForm({
                               </button>
                             )}
                           </div>
-                          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                            <Stepper label="REPS" value={s.reps} onChange={v => updateSet(exIdx, setIdx, "reps", v)} />
-                            <SecsStepperWithPicker value={s.duration_sec} onChange={v => updateSet(exIdx, setIdx, "duration_sec", v)} />
-                            <Stepper label="SETS" value={s.set_count} onChange={v => updateSet(exIdx, setIdx, "set_count", v)} />
+
+                          {/* Reps row */}
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
+                            <div>
+                              <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>Reps</div>
+                              <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>How many times</div>
+                            </div>
+                            <Stepper label="" value={s.reps} onChange={v => updateSet(exIdx, setIdx, "reps", v)} />
                           </div>
-                          <input type="text" placeholder="note" value={s.note} onChange={e => updateSet(exIdx, setIdx, "note", e.target.value)} style={{ width: "100%" }} />
+
+                          {/* Secs row with inline drum scroll */}
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
+                            <div>
+                              <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>Secs</div>
+                              <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>How long in seconds</div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                              <InlineDrumScroll
+                                items={[0.5, 1, 5]}
+                                selected={secsSteps[s.client_id] ?? 1}
+                                onSelect={v => setSecsSteps(prev => ({ ...prev, [s.client_id]: v }))}
+                              />
+                              <Stepper label="" value={s.duration_sec} onChange={v => updateSet(exIdx, setIdx, "duration_sec", v)} step={secsSteps[s.client_id] ?? 1} />
+                            </div>
+                          </div>
+
+                          {/* Sets row */}
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
+                            <div>
+                              <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>Sets</div>
+                              <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>Identical sets to log</div>
+                            </div>
+                            <Stepper label="" value={s.set_count} onChange={v => updateSet(exIdx, setIdx, "set_count", v)} />
+                          </div>
+
+                          {/* Note */}
+                          <input type="text" placeholder="Note for this set..." value={s.note} onChange={e => updateSet(exIdx, setIdx, "note", e.target.value)} style={{ width: "100%" }} />
                         </>
                       )}
                     </SortableSetRowWithHandle>
