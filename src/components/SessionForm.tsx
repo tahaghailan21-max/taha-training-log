@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { saveDraft, clearDraft, addToOutbox, getOutbox, removeFromOutbox, saveExerciseCache, loadExerciseCache, loadRecentSessions, addPendingExercise, getPendingExercises, clearPendingExercises } from "@/lib/idb";
+import { saveDraft, clearDraft, addToOutbox, saveExerciseCache, loadExerciseCache, loadRecentSessions, addPendingExercise } from "@/lib/idb";
 import { ThemeToggle } from "@/components/ThemeProvider";
 import { formatDate } from "@/lib/format";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -292,40 +292,12 @@ export default function SessionForm({
   useEffect(() => {
     setOnline(navigator.onLine);
 
-    async function flushAll() {
-      setOnline(true);
-      // 1. Flush pending exercises first (sessions may reference them)
-      try {
-        const pending = await getPendingExercises();
-        for (const ex of pending) {
-          await fetch("/api/exercises", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: ex.name }),
-          });
-        }
-        if (pending.length > 0) await clearPendingExercises();
-      } catch { /* still offline — will retry next time */ return; }
-
-      // 2. Flush outbox sessions
-      try {
-        const outbox = await getOutbox();
-        for (const payload of outbox) {
-          const res = await fetch("/api/sessions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-          if (res.ok) await removeFromOutbox(payload.client_id);
-        }
-      } catch { /* ignore — will retry */ }
-    }
-
+    const on = () => setOnline(true);
     const off = () => setOnline(false);
-    window.addEventListener("online", flushAll);
+    window.addEventListener("online", on);
     window.addEventListener("offline", off);
     return () => {
-      window.removeEventListener("online", flushAll);
+      window.removeEventListener("online", on);
       window.removeEventListener("offline", off);
     };
   }, []);
