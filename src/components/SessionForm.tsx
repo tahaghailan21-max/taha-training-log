@@ -345,6 +345,11 @@ export default function SessionForm({
       i === exIdx ? { ...e, sets: [...e.sets, emptySet(e.sets.length)] } : e
     ));
   }
+  function removeSet(exIdx: number, setIdx: number) {
+    setExerciseList(prev => prev.map((e, i) =>
+      i === exIdx ? { ...e, sets: e.sets.filter((_, si) => si !== setIdx) } : e
+    ));
+  }
   function updateSet(exIdx: number, setIdx: number, field: keyof SetEntry, value: string) {
     setExerciseList(prev => prev.map((e, i) =>
       i === exIdx ? { ...e, sets: e.sets.map((s, si) => si === setIdx ? { ...s, [field]: value } : s) } : e
@@ -500,7 +505,16 @@ export default function SessionForm({
               const isRunning = runningTimer === timerKey;
               return (
                 <div key={s.client_id} style={{ marginBottom: "0.85rem" }}>
-                  <div style={{ fontSize: "0.82rem", color: "var(--muted)", marginBottom: "0.4rem" }}>{setIdx + 1}</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                    <span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>{setIdx + 1}</span>
+                    {ex.sets.length > 1 && (
+                      <button type="button" onClick={() => removeSet(exIdx, setIdx)}
+                        aria-label="Remove set"
+                        style={{ background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer", padding: "0 0.2rem", fontSize: "0.85rem", lineHeight: 1 }}>
+                        ×
+                      </button>
+                    )}
+                  </div>
                   <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
                     <Stepper label="REPS" value={s.reps} onChange={v => updateSet(exIdx, setIdx, "reps", v)} />
                     <Stepper label="SECS" value={s.duration_sec} onChange={v => updateSet(exIdx, setIdx, "duration_sec", v)} />
