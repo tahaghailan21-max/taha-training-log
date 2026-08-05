@@ -115,6 +115,7 @@ export const feedback = pgTable("feedback", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   message: text("message").notNull(),
+  status: text("status").notNull().default("open"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

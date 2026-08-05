@@ -5,6 +5,8 @@ import { desc, eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 
 const ADMIN_USER_ID = 1;
+const VALID_STATUSES = ["open", "done", "ignored", "later"] as const;
+type Status = typeof VALID_STATUSES[number];
 
 export async function GET() {
   const userId = await getSession();
@@ -16,6 +18,7 @@ export async function GET() {
     .select({
       id: feedback.id,
       message: feedback.message,
+      status: feedback.status,
       created_at: feedback.created_at,
       username: users.username,
     })
@@ -24,6 +27,21 @@ export async function GET() {
     .orderBy(desc(feedback.created_at));
 
   return NextResponse.json(rows);
+}
+
+export async function PATCH(req: NextRequest) {
+  const userId = await getSession();
+  if (!userId || userId !== ADMIN_USER_ID) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { id, status } = await req.json() as { id: number; status: string };
+  if (!VALID_STATUSES.includes(status as Status)) {
+    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+
+  await db.update(feedback).set({ status }).where(eq(feedback.id, id));
+  return NextResponse.json({ ok: true });
 }
 
 export async function POST(req: NextRequest) {
