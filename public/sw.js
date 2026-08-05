@@ -1,17 +1,14 @@
-const CACHE = "tl-v2";
+const CACHE = "tl-v3";
 
-// App shell — all the pages and assets that make the app work offline
-const APP_SHELL = [
-  "/",
-  "/new",
-  "/login",
+// Only pre-cache truly static assets — NOT HTML pages (they're server-rendered and dynamic)
+const STATIC_ASSETS = [
   "/manifest.json",
 ];
 
-// ── Install: pre-cache the app shell ──────────────────────────────────────────
+// ── Install: pre-cache static assets ─────────────────────────────────────────
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL))
+    caches.open(CACHE).then((cache) => cache.addAll(STATIC_ASSETS))
   );
   self.skipWaiting();
 });
@@ -26,7 +23,7 @@ self.addEventListener("activate", (e) => {
   self.clients.claim();
 });
 
-// ── Fetch: cache-first for shell, network-first for API ───────────────────────
+// ── Fetch ─────────────────────────────────────────────────────────────────────
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
 
@@ -34,27 +31,51 @@ self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   if (url.origin !== self.location.origin) return;
 
-  // API calls: network first, no caching
+  // API calls: network only, never cache
   if (url.pathname.startsWith("/api/")) {
     e.respondWith(fetch(e.request));
     return;
   }
 
-  // Everything else: cache first, fall back to network, then cache what we get
+  // Static assets (_next/static, icons, manifest): cache-first
+  if (
+    url.pathname.startsWith("/_next/static/") ||
+    url.pathname.startsWith("/icons/") ||
+    url.pathname === "/manifest.json" ||
+    url.pathname === "/favicon.ico"
+  ) {
+    e.respondWith(
+      caches.match(e.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(e.request).then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE).then((cache) => cache.put(e.request, clone));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // HTML pages (/, /new, /login, /session/*): network-first so they always
+  // reflect the latest server-rendered content. Fall back to cache if offline.
   e.respondWith(
-    caches.match(e.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(e.request).then((response) => {
-        // Cache successful responses for next time
+    fetch(e.request)
+      .then((response) => {
+        // Cache a fresh copy for offline fallback
         if (response.ok) {
           const clone = response.clone();
           caches.open(CACHE).then((cache) => cache.put(e.request, clone));
         }
         return response;
-      }).catch(() => {
-        // Offline and not in cache — return the home page as fallback
-        return caches.match("/") ?? new Response("Offline", { status: 503 });
-      });
-    })
+      })
+      .catch(() => {
+        // Offline — serve the cached version if we have one
+        return caches.match(e.request).then(
+          (cached) => cached ?? caches.match("/") ?? new Response("Offline", { status: 503 })
+        );
+      })
   );
 });
