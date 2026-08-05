@@ -5,11 +5,18 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 export const metadata: Metadata = {
   title: "Training Log",
   description: "Taha's personal training log",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "TrainLog",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  themeColor: "#0a0a0a",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -22,9 +29,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})()`,
           }}
         />
+        {/* PWA icons for iOS (Safari doesn't use manifest icons) */}
+        <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body>
         <ThemeProvider>{children}</ThemeProvider>
+        {/* Register service worker */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js')
+                    .catch(function(err) { console.warn('SW registration failed:', err); });
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
