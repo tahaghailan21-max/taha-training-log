@@ -504,6 +504,7 @@ export default function SessionForm({
       exercises: exerciseList.map((ex, ei) => ({
         client_id: uuid(),
         exercise_id: ex.exercise_id,
+        exercise_name: ex.exercise_name,
         position: ei,
         notes: ex.notes || null,
         sets: ex.sets.map((s, si) => ({
