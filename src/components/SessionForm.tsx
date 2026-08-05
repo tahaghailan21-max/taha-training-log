@@ -3,13 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { saveDraft, clearDraft, addToOutbox, saveExerciseCache, loadExerciseCache, loadRecentSessions, addPendingExercise } from "@/lib/idb";
-import { ThemeToggle } from "@/components/ThemeProvider";
 import { formatDate } from "@/lib/format";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import SecsIncrementPicker from "@/components/SecsIncrementPicker";
+import HeaderMenu from "@/components/HeaderMenu";
 import { faXmark, faRotateLeft, faGripVertical } from "@fortawesome/free-solid-svg-icons";
-import { HelpButton } from "@/components/HelpModal";
-import LogoutButton from "@/components/LogoutButton";
 import {
   DndContext,
   closestCenter,
@@ -602,15 +600,16 @@ export default function SessionForm({
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.85rem 1rem" }}>
         <Link href="/" style={{ textDecoration: "none" }}>
-          <h1 style={{ color: "var(--lime)", fontWeight: 800, fontSize: "1.25rem", letterSpacing: "0.04em" }}>
-            TRAINING LOGS
-          </h1>
+          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+            <h1 style={{ color: "var(--lime)", fontWeight: 800, fontSize: "1.25rem", letterSpacing: "0.04em", margin: 0 }}>
+              TRAINING LOGS
+            </h1>
+            <span style={{ color: "var(--muted)", fontSize: "0.62rem", letterSpacing: "0.08em" }}>
+              ← BACK TO FEED
+            </span>
+          </div>
         </Link>
-        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-          <HelpButton />
-          <ThemeToggle />
-          <LogoutButton />
-        </div>
+        <HeaderMenu />
       </div>
 
       {!online && !isEdit && (

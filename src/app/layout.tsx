@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import OutboxSync from "@/components/OutboxSync";
+import PageTransition from "@/components/PageTransition";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "Training Log",
@@ -36,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ThemeProvider>{children}</ThemeProvider>
         <OutboxSync />
+        <Suspense fallback={null}><PageTransition /></Suspense>
         {/* Register service worker */}
         <script
           dangerouslySetInnerHTML={{

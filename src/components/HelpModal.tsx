@@ -39,8 +39,10 @@ function ExLabel({ children }: { children: React.ReactNode }) {
   return <span style={{ color: "var(--muted)", fontSize: "0.75rem" }}> ← {children}</span>;
 }
 
-export function HelpButton() {
-  const [open, setOpen] = useState(false);
+export function HelpButton({ open: controlledOpen, onOpenChange }: { open?: boolean; onOpenChange?: (v: boolean) => void } = {}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
 
   return (
     <>

@@ -5,14 +5,11 @@ import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { formatDate } from "@/lib/format";
-import { ThemeToggle } from "@/components/ThemeProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPen } from "@fortawesome/free-solid-svg-icons";
+import { faPen, faPlus } from "@fortawesome/free-solid-svg-icons";
 import SwipeableCard from "@/components/SwipeableCard";
-import { HelpButton } from "@/components/HelpModal";
-import LogoutButton from "@/components/LogoutButton";
-import InstallButton from "@/components/InstallButton";
 import OfflineSnapshot from "@/components/OfflineSnapshot";
+import HeaderMenu from "@/components/HeaderMenu";
 
 export const revalidate = 0;
 
@@ -96,23 +93,20 @@ export default async function HomePage() {
         padding: "0.75rem 1rem", borderBottom: "1px solid var(--border)",
         background: "var(--bg)", position: "sticky", top: 0, zIndex: 10,
       }}>
-        <span style={{ color: "var(--lime)", fontWeight: 800, fontSize: "1.1rem", letterSpacing: "0.04em" }}>
-          TRAINING LOGS
-        </span>
-        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-          <Link href="/new">
-            <button type="button" className="primary" style={{ borderRadius: 20, padding: "0.3rem 0.9rem", fontSize: "0.85rem" }}>
-              + Log
-            </button>
-          </Link>
-          <HelpButton />
-          <ThemeToggle />
-          <InstallButton />
-          <LogoutButton />
-        </div>
+        <Link href="/" style={{ textDecoration: "none" }}>
+          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+            <span style={{ color: "var(--lime)", fontWeight: 800, fontSize: "1.1rem", letterSpacing: "0.04em" }}>
+              TRAINING LOGS
+            </span>
+            <span style={{ color: "var(--muted)", fontSize: "0.62rem", letterSpacing: "0.08em" }}>
+              YOUR FEED
+            </span>
+          </div>
+        </Link>
+        <HeaderMenu />
       </div>
 
-      <div style={{ maxWidth: 680, margin: "0 auto", padding: "1rem 1rem 4rem" }}>
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "1rem 1rem 6rem" }}>
         {sessionData.length === 0 && (
           <div style={{ textAlign: "center", marginTop: "4rem", padding: "0 1rem" }}>
             <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🏋️</div>
@@ -244,6 +238,26 @@ export default async function HomePage() {
           );
         })}
       </div>
+
+      {/* FAB — + Log */}
+      <Link href="/new" style={{ textDecoration: "none" }}>
+        <button
+          type="button"
+          aria-label="Log a session"
+          style={{
+            position: "fixed", bottom: "1.75rem", right: "1.25rem",
+            width: 60, height: 60, borderRadius: "50%",
+            background: "var(--lime)", color: "#000",
+            border: "none", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 4px 20px rgba(198,241,53,0.35)",
+            zIndex: 50, flexShrink: 0,
+          }}
+        >
+          <FontAwesomeIcon icon={faPlus} style={{ width: 22, height: 22 }} />
+        </button>
+      </Link>
+
       <OfflineSnapshot />
     </div>
   );
