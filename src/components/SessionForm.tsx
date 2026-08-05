@@ -72,14 +72,15 @@ export function emptySet(position: number): SetEntry {
 }
 
 /* ── Stepper ── */
-function Stepper({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function Stepper({ label, value, onChange, step = 1 }: { label: string; value: string; onChange: (v: string) => void; step?: number }) {
   const num = parseFloat(value) || 0;
+  const fmt = (n: number) => Number.isInteger(n) ? String(n) : n.toFixed(1);
   return (
     <div style={{
       flex: 1, background: "var(--surface2)", borderRadius: 6, padding: "0.45rem 0.5rem",
       display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.25rem",
     }}>
-      <button type="button" onClick={() => onChange(String(Math.max(0, num - 1)))}
+      <button type="button" onClick={() => onChange(fmt(Math.max(0, num - step)))}
         style={{ background: "transparent", border: "none", color: "var(--text)", fontSize: "1.1rem", padding: "0 0.4rem", cursor: "pointer", lineHeight: 1 }}>
         −
       </button>
@@ -87,10 +88,40 @@ function Stepper({ label, value, onChange }: { label: string; value: string; onC
         <div style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text)", lineHeight: 1.2 }}>{value}</div>
         <div style={{ fontSize: "0.6rem", color: "var(--muted)", letterSpacing: "0.08em", marginTop: 2 }}>{label}</div>
       </div>
-      <button type="button" onClick={() => onChange(String(num + 1))}
+      <button type="button" onClick={() => onChange(fmt(num + step))}
         style={{ background: "transparent", border: "none", color: "var(--lime)", fontSize: "1.1rem", padding: "0 0.4rem", cursor: "pointer", lineHeight: 1 }}>
         +
       </button>
+    </div>
+  );
+}
+
+const SECS_STEPS = [0.5, 1, 5] as const;
+type SecsStep = typeof SECS_STEPS[number];
+
+function SecsStepperWithPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [step, setStep] = useState<SecsStep>(1);
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+      <Stepper label="SECS" value={value} onChange={onChange} step={step} />
+      <div style={{ display: "flex", gap: "0.25rem" }}>
+        {SECS_STEPS.map(s => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setStep(s)}
+            style={{
+              flex: 1, fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.04em",
+              padding: "0.2rem 0", border: "1px solid var(--border)", borderRadius: 4,
+              background: step === s ? "var(--lime)" : "transparent",
+              color: step === s ? "#000" : "var(--muted)",
+              cursor: "pointer",
+            }}
+          >
+            {s === 0.5 ? "½s" : `${s}s`}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -669,7 +700,7 @@ export default function SessionForm({
                           </div>
                           <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
                             <Stepper label="REPS" value={s.reps} onChange={v => updateSet(exIdx, setIdx, "reps", v)} />
-                            <Stepper label="SECS" value={s.duration_sec} onChange={v => updateSet(exIdx, setIdx, "duration_sec", v)} />
+                            <SecsStepperWithPicker value={s.duration_sec} onChange={v => updateSet(exIdx, setIdx, "duration_sec", v)} />
                           </div>
                           <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
                             <Stepper label="SETS" value={s.set_count} onChange={v => updateSet(exIdx, setIdx, "set_count", v)} />
