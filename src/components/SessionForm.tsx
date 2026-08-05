@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { saveDraft, clearDraft, addToOutbox, saveExerciseCache, loadExerciseCache, loadRecentSessions, addPendingExercise } from "@/lib/idb";
@@ -262,9 +262,6 @@ export default function SessionForm({
   const [saving, setSaving] = useState(false);
   const [savedOffline, setSavedOffline] = useState(false);
   const [online, setOnline] = useState(true);
-  const [timers, setTimers] = useState<Record<string, number>>({});
-  const [runningTimer, setRunningTimer] = useState<string | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [showCopy, setShowCopy] = useState(false);
   const [copySessions, setCopySessions] = useState<CopySession[]>([]);
   const [copyFromCache, setCopyFromCache] = useState(false);
@@ -334,23 +331,6 @@ export default function SessionForm({
       window.removeEventListener("offline", off);
     };
   }, []);
-
-  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
-
-  /* ── Timer ── */
-  function toggleTimer(key: string) {
-    if (runningTimer === key) {
-      if (timerRef.current) clearInterval(timerRef.current);
-      setRunningTimer(null);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-      setTimers(prev => ({ ...prev, [key]: 0 }));
-      setRunningTimer(key);
-      timerRef.current = setInterval(() => {
-        setTimers(prev => ({ ...prev, [key]: (prev[key] ?? 0) + 1 }));
-      }, 1000);
-    }
-  }
 
   /* ── Copy session ── */
   async function openCopy() {
@@ -681,9 +661,6 @@ export default function SessionForm({
             >
               <SortableContext items={ex.sets.map(s => s.client_id)} strategy={verticalListSortingStrategy}>
                 {ex.sets.map((s, setIdx) => {
-                  const timerKey = `${ex.client_id}-${setIdx}`;
-                  const timerVal = timers[timerKey] ?? 0;
-                  const isRunning = runningTimer === timerKey;
                   return (
                     <SortableSetRowWithHandle key={s.client_id} id={s.client_id}>
                       {(handle) => (
@@ -704,22 +681,7 @@ export default function SessionForm({
                           <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
                             <Stepper label="REPS" value={s.reps} onChange={v => updateSet(exIdx, setIdx, "reps", v)} />
                             <SecsStepperWithPicker value={s.duration_sec} onChange={v => updateSet(exIdx, setIdx, "duration_sec", v)} />
-                          </div>
-                          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
                             <Stepper label="SETS" value={s.set_count} onChange={v => updateSet(exIdx, setIdx, "set_count", v)} />
-                            <button type="button" onClick={() => toggleTimer(timerKey)}
-                              style={{
-                                flex: 1, background: "var(--surface2)",
-                                border: isRunning ? "1px solid var(--lime)" : "1px solid var(--border)",
-                                borderRadius: 6, color: "var(--lime)", cursor: "pointer", fontSize: "0.85rem",
-                                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem",
-                                padding: "0.45rem 0.5rem", fontWeight: 600,
-                              }}>
-                              <span>⏱</span>
-                              {isRunning
-                                ? `${String(Math.floor(timerVal / 60)).padStart(2, "0")}:${String(timerVal % 60).padStart(2, "0")}`
-                                : "Time it"}
-                            </button>
                           </div>
                           <input type="text" placeholder="note" value={s.note} onChange={e => updateSet(exIdx, setIdx, "note", e.target.value)} style={{ width: "100%" }} />
                         </>

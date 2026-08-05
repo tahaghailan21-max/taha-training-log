@@ -39,14 +39,16 @@ export default function HeaderMenu() {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
+  // Close on outside click — but only if help isn't open
   useEffect(() => {
     if (!open) return;
     function handle(e: MouseEvent) {
+      if (helpOpen) return; // don't close menu while help is open behind it
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
-  }, [open]);
+  }, [open, helpOpen]);
 
   async function handleLogout() {
     setOpen(false);
@@ -70,9 +72,9 @@ export default function HeaderMenu() {
 
   return (
     <>
-      {/* Invisible HelpButton — controlled open state */}
-      <div style={{ display: "none" }}>
-        <HelpButton open={helpOpen} onOpenChange={setHelpOpen} />
+      {/* HelpButton rendered invisibly — just needs to be mounted to show modal */}
+      <div style={{ position: "fixed", width: 0, height: 0, overflow: "hidden", zIndex: -1 }}>
+        <HelpButton open={helpOpen} onOpenChange={v => setHelpOpen(v)} />
       </div>
 
       <div ref={menuRef} style={{ position: "relative" }}>
@@ -101,19 +103,23 @@ export default function HeaderMenu() {
             boxShadow: "0 8px 32px rgba(0,0,0,0.35)",
             overflow: "hidden",
           }}>
+            {/* Theme toggle — does NOT close menu */}
             <MenuItem
               icon={<FontAwesomeIcon icon={theme === "dark" ? faMoon : faSun} style={{ width: 15, height: 15 }} />}
               label={theme === "dark" ? "Dark mode" : "Light mode"}
               sublabel="Tap to switch"
-              onClick={() => { toggle(); setOpen(false); }}
+              onClick={() => toggle()} // no setOpen(false)
             />
             <Divider />
+
+            {/* How to use — opens modal without closing menu */}
             <MenuItem
               icon={<FontAwesomeIcon icon={faCircleQuestion} style={{ width: 15, height: 15 }} />}
               label="How to use"
               sublabel="Guide & tips"
-              onClick={() => { setOpen(false); setHelpOpen(true); }}
+              onClick={() => setHelpOpen(true)} // no setOpen(false)
             />
+
             {showInstall && (
               <>
                 <Divider />

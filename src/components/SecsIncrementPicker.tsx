@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-const ITEM_H = 48; // height of each row in px
-const VISIBLE = 5;  // rows visible at once (centre row = selected)
+const ITEM_H = 52;
 
 type IncrementItem = { id: number | null; value: number };
 
@@ -22,7 +21,6 @@ function fmt(n: number) {
   return Number.isInteger(n) ? `${n}s` : `${n}s`;
 }
 
-/* ── Drum-roll column ── */
 function DrumRoll({
   items,
   selectedValue,
@@ -32,121 +30,142 @@ function DrumRoll({
   selectedValue: number;
   onSelect: (v: number) => void;
 }) {
-  const listRef = useRef<HTMLDivElement>(null);
-  const selectedIdx = items.findIndex(i => i.value === selectedValue);
-  const startIdx = selectedIdx === -1 ? 0 : selectedIdx;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const snapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [activeIdx, setActiveIdx] = useState(() => {
+    const i = items.findIndex(x => x.value === selectedValue);
+    return i === -1 ? 0 : i;
+  });
 
-  // Scroll to selected on mount / when selection changes
+  // On mount: scroll to selected without animation
   useEffect(() => {
-    const el = listRef.current;
+    const el = scrollRef.current;
     if (!el) return;
-    const idx = items.findIndex(i => i.value === selectedValue);
-    if (idx === -1) return;
-    el.scrollTo({ top: idx * ITEM_H, behavior: "smooth" });
-  }, [selectedValue, items]);
+    el.scrollTop = activeIdx * ITEM_H;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Snap on scroll end
+  // When items list changes (e.g. custom added), re-sync scroll
+  useEffect(() => {
+    const idx = items.findIndex(x => x.value === selectedValue);
+    if (idx === -1) return;
+    setActiveIdx(idx);
+    const el = scrollRef.current;
+    if (el) el.scrollTop = idx * ITEM_H;
+  }, [items, selectedValue]);
+
   function handleScroll() {
-    const el = listRef.current;
+    const el = scrollRef.current;
     if (!el) return;
-    clearTimeout((el as HTMLDivElement & { _snapTimer?: ReturnType<typeof setTimeout> })._snapTimer);
-    (el as HTMLDivElement & { _snapTimer?: ReturnType<typeof setTimeout> })._snapTimer = setTimeout(() => {
-      const idx = Math.round(el.scrollTop / ITEM_H);
+    if (snapTimer.current) clearTimeout(snapTimer.current);
+    snapTimer.current = setTimeout(() => {
+      const rawIdx = el.scrollTop / ITEM_H;
+      const idx = Math.round(rawIdx);
       const clamped = Math.max(0, Math.min(idx, items.length - 1));
+      // Snap
       el.scrollTo({ top: clamped * ITEM_H, behavior: "smooth" });
+      setActiveIdx(clamped);
       onSelect(items[clamped].value);
-    }, 120);
+    }, 80);
   }
 
-  const padCount = Math.floor(VISIBLE / 2); // 2 padding items top/bottom
-
   return (
-    <div style={{ position: "relative", height: ITEM_H * VISIBLE, overflow: "hidden" }}>
-      {/* Selection highlight band */}
+    <div style={{
+      position: "relative",
+      height: ITEM_H * 5,
+      overflow: "hidden",
+      borderRadius: 12,
+      background: "var(--surface2)",
+    }}>
+      {/* Centre highlight */}
       <div style={{
-        position: "absolute", left: 0, right: 0,
-        top: ITEM_H * padCount, height: ITEM_H,
-        background: "var(--surface2)",
-        border: "1px solid var(--border)",
-        borderRadius: 10,
-        pointerEvents: "none", zIndex: 1,
+        position: "absolute",
+        left: 12, right: 12,
+        top: ITEM_H * 2,
+        height: ITEM_H,
+        borderRadius: 8,
+        border: "2px solid var(--lime)",
+        pointerEvents: "none",
+        zIndex: 2,
       }} />
 
       {/* Top fade */}
       <div style={{
         position: "absolute", top: 0, left: 0, right: 0,
-        height: ITEM_H * padCount,
-        background: "linear-gradient(to bottom, var(--surface), transparent)",
-        pointerEvents: "none", zIndex: 2,
+        height: ITEM_H * 2,
+        background: "linear-gradient(to bottom, var(--surface2) 0%, transparent 100%)",
+        pointerEvents: "none", zIndex: 3,
       }} />
 
       {/* Bottom fade */}
       <div style={{
         position: "absolute", bottom: 0, left: 0, right: 0,
-        height: ITEM_H * padCount,
-        background: "linear-gradient(to top, var(--surface), transparent)",
-        pointerEvents: "none", zIndex: 2,
+        height: ITEM_H * 2,
+        background: "linear-gradient(to top, var(--surface2) 0%, transparent 100%)",
+        pointerEvents: "none", zIndex: 3,
       }} />
 
-      {/* Scrollable list */}
+      {/* Scroll container */}
       <div
-        ref={listRef}
+        ref={scrollRef}
         onScroll={handleScroll}
         style={{
-          height: "100%",
+          position: "absolute", inset: 0,
           overflowY: "scroll",
-          scrollSnapType: "y mandatory",
           scrollbarWidth: "none",
-          msOverflowStyle: "none",
-          paddingTop: ITEM_H * padCount,
-          paddingBottom: ITEM_H * padCount,
+          // Pad so first/last items can centre
+          paddingTop: ITEM_H * 2,
+          paddingBottom: ITEM_H * 2,
         }}
       >
-        {/* Hide scrollbar in WebKit */}
-        <style>{`.drum-roll::-webkit-scrollbar{display:none}`}</style>
-        {items.map((item, i) => {
-          const isSelected = item.value === selectedValue;
-          const dist = Math.abs(i - startIdx);
-          const opacity = dist === 0 ? 1 : dist === 1 ? 0.5 : 0.25;
-          const scale = dist === 0 ? 1 : 0.88;
-          return (
-            <div
-              key={`${item.id ?? "bi"}-${item.value}`}
-              onClick={() => {
-                listRef.current?.scrollTo({ top: i * ITEM_H, behavior: "smooth" });
-                onSelect(item.value);
-              }}
-              style={{
-                height: ITEM_H,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                scrollSnapAlign: "start",
-                cursor: "pointer",
-                fontWeight: isSelected ? 800 : 600,
-                fontSize: isSelected ? "1.15rem" : "1rem",
-                color: isSelected ? "var(--lime)" : "var(--text)",
-                opacity,
-                transform: `scale(${scale})`,
-                transition: "transform 0.15s, opacity 0.15s",
-                userSelect: "none",
-              }}
-            >
-              {fmt(item.value)}
-            </div>
-          );
-        })}
+        <style>{`
+          .drum-scroll::-webkit-scrollbar { display: none; }
+        `}</style>
+        <div className="drum-scroll">
+          {items.map((item, i) => {
+            const dist = Math.abs(i - activeIdx);
+            const opacity = dist === 0 ? 1 : dist === 1 ? 0.45 : 0.18;
+            const scale = dist === 0 ? 1.08 : dist === 1 ? 0.9 : 0.78;
+            return (
+              <div
+                key={`${item.id ?? "b"}-${item.value}`}
+                onClick={() => {
+                  const el = scrollRef.current;
+                  if (el) el.scrollTo({ top: i * ITEM_H, behavior: "smooth" });
+                  setActiveIdx(i);
+                  onSelect(item.value);
+                }}
+                style={{
+                  height: ITEM_H,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  userSelect: "none",
+                  fontSize: dist === 0 ? "1.2rem" : "1rem",
+                  fontWeight: dist === 0 ? 800 : 500,
+                  color: dist === 0 ? "var(--lime)" : "var(--text)",
+                  opacity,
+                  transform: `scale(${scale})`,
+                  transition: "opacity 0.12s, transform 0.12s, color 0.12s",
+                }}
+              >
+                {fmt(item.value)}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 }
 
-/* ── Main picker ── */
 export default function SecsIncrementPicker({ selected, onSelect, onClose }: Props) {
   const [custom, setCustom] = useState<IncrementItem[]>([]);
   const [input, setInput] = useState("");
   const [adding, setAdding] = useState(false);
   const [localSelected, setLocalSelected] = useState(selected);
 
-  // Load user's custom increments
   useEffect(() => {
     fetch("/api/secs-increments")
       .then(r => r.json())
@@ -171,9 +190,7 @@ export default function SecsIncrementPicker({ selected, onSelect, onClose }: Pro
         body: JSON.stringify({ value: val }),
       });
       const row = await res.json() as { id: number; value: number };
-      setCustom(prev =>
-        prev.find(c => c.id === row.id) ? prev : [...prev, { id: row.id, value: row.value }]
-      );
+      setCustom(prev => prev.find(c => c.id === row.id) ? prev : [...prev, { id: row.id, value: row.value }]);
       setInput("");
       setLocalSelected(row.value);
     } finally {
@@ -192,34 +209,25 @@ export default function SecsIncrementPicker({ selected, onSelect, onClose }: Pro
     if (localSelected === item.value) setLocalSelected(1);
   }
 
-  function confirm() {
-    onSelect(localSelected);
-    onClose();
-  }
-
   return (
     <>
-      {/* Backdrop */}
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100 }} />
 
-      {/* Sheet */}
       <div style={{
         position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 101,
         background: "var(--surface)", borderRadius: "16px 16px 0 0",
         padding: "1rem 1.25rem 2rem",
         boxShadow: "0 -4px 32px rgba(0,0,0,0.4)",
       }}>
-        {/* Handle */}
         <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border)", margin: "0 auto 1rem" }} />
 
-        <h3 style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--muted)", letterSpacing: "0.1em", marginBottom: "0.75rem", textAlign: "center" }}>
+        <h3 style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--muted)", letterSpacing: "0.1em", marginBottom: "0.85rem", textAlign: "center" }}>
           SECS INCREMENT
         </h3>
 
-        {/* Drum roll */}
         <DrumRoll items={allOptions} selectedValue={localSelected} onSelect={setLocalSelected} />
 
-        {/* Custom items management */}
+        {/* Custom chips */}
         {custom.filter(c => !builtInValues.has(c.value)).length > 0 && (
           <div style={{ marginTop: "0.75rem", display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
             {custom.filter(c => !builtInValues.has(c.value)).map(item => (
@@ -231,8 +239,9 @@ export default function SecsIncrementPicker({ selected, onSelect, onClose }: Pro
               }}>
                 {fmt(item.value)}
                 <button type="button" onClick={() => handleDelete(item)}
-                  style={{ background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer", padding: 0, lineHeight: 1, fontSize: "0.9rem" }}
-                  aria-label={`Remove ${item.value}s`}>×</button>
+                  style={{ background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer", padding: 0, lineHeight: 1, fontSize: "0.95rem" }}>
+                  ×
+                </button>
               </div>
             ))}
           </div>
@@ -241,9 +250,7 @@ export default function SecsIncrementPicker({ selected, onSelect, onClose }: Pro
         {/* Add custom */}
         <div style={{ borderTop: "1px solid var(--border)", marginTop: "0.85rem", paddingTop: "0.85rem", display: "flex", gap: "0.5rem" }}>
           <input
-            type="number"
-            step="0.5"
-            min="0.5"
+            type="number" step="0.5" min="0.5"
             placeholder="Custom (e.g. 2.5)"
             value={input}
             onChange={e => setInput(e.target.value)}
@@ -252,9 +259,9 @@ export default function SecsIncrementPicker({ selected, onSelect, onClose }: Pro
           />
           <button type="button" onClick={handleAdd} disabled={adding || !input}
             style={{
-              borderRadius: 8, padding: "0.5rem 1rem", fontSize: "0.85rem",
-              fontWeight: 700, background: "var(--lime)", color: "#000",
-              border: "none", cursor: adding || !input ? "not-allowed" : "pointer",
+              borderRadius: 8, padding: "0.5rem 1rem", fontWeight: 700,
+              background: "var(--lime)", color: "#000", border: "none",
+              cursor: adding || !input ? "not-allowed" : "pointer",
               opacity: adding || !input ? 0.5 : 1, whiteSpace: "nowrap",
             }}>
             + Add
@@ -262,12 +269,13 @@ export default function SecsIncrementPicker({ selected, onSelect, onClose }: Pro
         </div>
 
         {/* Confirm */}
-        <button type="button" onClick={confirm} style={{
-          width: "100%", marginTop: "0.85rem",
-          background: "var(--lime)", color: "#000",
-          fontWeight: 800, fontSize: "1rem", border: "none",
-          borderRadius: 8, padding: "0.85rem", cursor: "pointer",
-        }}>
+        <button type="button" onClick={() => { onSelect(localSelected); onClose(); }}
+          style={{
+            width: "100%", marginTop: "0.85rem",
+            background: "var(--lime)", color: "#000",
+            fontWeight: 800, fontSize: "1rem", border: "none",
+            borderRadius: 8, padding: "0.85rem", cursor: "pointer",
+          }}>
           Use {fmt(localSelected)}
         </button>
       </div>
