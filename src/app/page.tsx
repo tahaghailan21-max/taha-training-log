@@ -11,6 +11,7 @@ import { faPen } from "@fortawesome/free-solid-svg-icons";
 import SwipeableCard from "@/components/SwipeableCard";
 import { HelpButton } from "@/components/HelpModal";
 import LogoutButton from "@/components/LogoutButton";
+import InstallButton from "@/components/InstallButton";
 
 export const revalidate = 0;
 
@@ -108,6 +109,7 @@ export default async function HomePage() {
           </Link>
           <HelpButton />
           <ThemeToggle />
+          <InstallButton />
           <LogoutButton />
         </div>
       </div>
