@@ -8,6 +8,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import InlineDrumScroll from "@/components/InlineDrumScroll";
 import SecsIncrementPicker from "@/components/SecsIncrementPicker";
 import HeaderMenu from "@/components/HeaderMenu";
+import { useT } from "@/components/LanguageProvider";
 import { faXmark, faRotateLeft, faGripVertical } from "@fortawesome/free-solid-svg-icons";
 import {
   DndContext,
@@ -109,11 +110,12 @@ function CopyModal({
   onClose: () => void;
   fromCache?: boolean;
 }) {
+  const { t } = useT();
   return (
     <div className="copy-modal-overlay" onClick={onClose}>
       <div className="copy-modal" onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-          <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--lime)" }}>Copy a session</h2>
+          <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--lime)" }}>{t.copyTitle}</h2>
           <button type="button" onClick={onClose}
             style={{ background: "transparent", border: "none", fontSize: "1.2rem", color: "var(--muted)", cursor: "pointer", padding: "0 0.25rem" }}>
             ✕
@@ -121,11 +123,11 @@ function CopyModal({
         </div>
         {fromCache && (
           <p style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: "0.75rem", fontStyle: "italic" }}>
-            ● Showing cached sessions — you&apos;re offline
+            {t.copyOffline}
           </p>
         )}
         {sessions.length === 0 && (
-          <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>No recent sessions found.</p>
+          <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>{t.noRecent}</p>
         )}
         {sessions.map(s => (
           <button
@@ -185,6 +187,7 @@ function SortableSetRowWithHandle({ id, children }: { id: string; children: (han
 
 /* ── Offline saved screen ── */
 function OfflineSavedScreen({ onBack }: { onBack: () => void }) {
+  const { t } = useT();
   useEffect(() => {
     function handleOnline() { onBack(); }
     window.addEventListener("online", handleOnline);
@@ -194,16 +197,16 @@ function OfflineSavedScreen({ onBack }: { onBack: () => void }) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--bg)", color: "var(--text)", padding: "2rem", textAlign: "center" }}>
       <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📥</div>
-      <h2 style={{ color: "var(--lime)", fontWeight: 800, fontSize: "1.3rem", marginBottom: "0.75rem" }}>Saved offline</h2>
+      <h2 style={{ color: "var(--lime)", fontWeight: 800, fontSize: "1.3rem", marginBottom: "0.75rem" }}>{t.offlineSaved}</h2>
       <p style={{ color: "var(--muted)", fontSize: "0.95rem", lineHeight: 1.6, marginBottom: "2rem", maxWidth: 320 }}>
-        Your session is queued and will sync automatically as soon as you&apos;re back online.
+        {t.offlineSavedSub}
       </p>
       <button
         type="button"
         onClick={onBack}
         style={{ borderRadius: 8, padding: "0.75rem 2rem", fontSize: "1rem", fontWeight: 700, background: "var(--lime)", color: "#000", border: "none", cursor: "pointer", letterSpacing: "0.03em" }}
       >
-        Back to logs
+        {t.backToLogs}
       </button>
     </div>
   );
@@ -219,6 +222,7 @@ export default function SessionForm({
   initialExercises = [],
 }: SessionFormProps) {
   const router = useRouter();
+  const { t } = useT();
   const [date, setDate] = useState(initialDate ?? new Date().toISOString().slice(0, 10));
   const [title, setTitle] = useState(initialTitle);
   const [notes, setNotes] = useState(initialNotes);
@@ -568,10 +572,10 @@ export default function SessionForm({
         <Link href="/" style={{ textDecoration: "none" }}>
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
             <h1 style={{ color: "var(--lime)", fontWeight: 800, fontSize: "1.25rem", letterSpacing: "0.04em", margin: 0 }}>
-              TRAINING LOGS
+              {t.appTitle}
             </h1>
             <span style={{ color: "var(--muted)", fontSize: "0.62rem", letterSpacing: "0.08em" }}>
-              ← BACK TO FEED
+              {t.backToFeed}
             </span>
           </div>
         </Link>
@@ -580,7 +584,7 @@ export default function SessionForm({
 
       {!online && !isEdit && (
         <div style={{ background: "#333", color: "var(--muted)", fontSize: "0.75rem", padding: "0.3rem 1rem" }}>
-          ● Offline — will sync later
+          {t.offlineBanner}
         </div>
       )}
 
@@ -590,27 +594,27 @@ export default function SessionForm({
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "1rem", marginBottom: "0.75rem" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
             <div>
-              <label style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "0.35rem" }}>DATE</label>
+              <label style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "0.35rem" }}>{t.date}</label>
               <input type="date" value={date} onChange={e => setDate(e.target.value)} required style={{ width: "100%" }} />
             </div>
             <div>
-              <label style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "0.35rem" }}>BODYWEIGHT (KG)</label>
+              <label style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "0.35rem" }}>{t.bodyweight}</label>
               <input type="number" step="0.1" placeholder="—" value={bodyweight} onChange={e => setBodyweight(e.target.value)} style={{ width: "100%" }} />
             </div>
           </div>
           <div style={{ marginBottom: "0.75rem" }}>
-            <label style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "0.35rem" }}>SESSION</label>
-            <input type="text" placeholder="e.g. Handstands, Planch, & Bridge" value={title} onChange={e => setTitle(e.target.value)} style={{ width: "100%" }} />
+            <label style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "0.35rem" }}>{t.session}</label>
+            <input type="text" placeholder={t.sessionPh} value={title} onChange={e => setTitle(e.target.value)} style={{ width: "100%" }} />
           </div>
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
             <button type="button" onClick={openCopy}
               style={{ borderRadius: 20, padding: "0.35rem 1.1rem", fontSize: "0.85rem", border: "1px solid var(--border)", background: "transparent", color: "var(--lime)", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem" }}>
               <FontAwesomeIcon icon={faRotateLeft} style={{ width: 13, height: 13 }} />
-              Copy a session (7)
+              {t.copySession}
             </button>
             <button type="button" onClick={markRestDay}
               style={{ borderRadius: 20, padding: "0.35rem 1.1rem", fontSize: "0.85rem", border: "1px solid var(--border)", background: "transparent", color: "var(--text)", cursor: "pointer" }}>
-              Mark rest day
+              {t.markRestDay}
             </button>
           </div>
         </div>
@@ -626,7 +630,7 @@ export default function SessionForm({
                     fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.06em",
                     background: "var(--lime)", color: "#000",
                     borderRadius: 4, padding: "0.1rem 0.35rem",
-                  }}>NEW</span>
+                  }}>{t.newBadge}</span>
                 )}
               </div>
               <button type="button" onClick={() => removeExercise(exIdx)}
@@ -673,8 +677,8 @@ export default function SessionForm({
                             {/* Reps row */}
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
                               <div>
-                                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>Reps</div>
-                                <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>How many times</div>
+                                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>{t.reps}</div>
+                                <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>{t.repsDesc}</div>
                               </div>
                               <Stepper label="" value={s.reps} onChange={v => updateSet(exIdx, setIdx, "reps", v)} />
                             </div>
@@ -682,8 +686,8 @@ export default function SessionForm({
                             {/* Secs row */}
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
                               <div>
-                                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>Secs</div>
-                                <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>How long in seconds</div>
+                                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>{t.secs}</div>
+                                <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>{t.secsDesc}</div>
                               </div>
                               <Stepper label="" value={s.duration_sec} onChange={v => updateSet(exIdx, setIdx, "duration_sec", v)} step={secsSteps[s.client_id] ?? 1} />
                             </div>
@@ -691,8 +695,8 @@ export default function SessionForm({
                             {/* Sets row */}
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
                               <div>
-                                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>Sets</div>
-                                <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>Identical sets to log</div>
+                                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>{t.sets}</div>
+                                <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>{t.setsDesc}</div>
                               </div>
                               <Stepper label="" value={s.set_count} onChange={v => updateSet(exIdx, setIdx, "set_count", v)} />
                             </div>
@@ -747,7 +751,7 @@ export default function SessionForm({
                           )}
 
                           {/* Note */}
-                          <input type="text" placeholder="Note for this set..." value={s.note} onChange={e => updateSet(exIdx, setIdx, "note", e.target.value)} style={{ width: "100%" }} />
+                          <input type="text" placeholder={t.noteSet} value={s.note} onChange={e => updateSet(exIdx, setIdx, "note", e.target.value)} style={{ width: "100%" }} />
                         </>
                       )}
                     </SortableSetRowWithHandle>
@@ -758,38 +762,38 @@ export default function SessionForm({
 
             <button type="button" onClick={() => addSet(exIdx)}
               style={{ borderRadius: 20, padding: "0.3rem 1rem", fontSize: "0.85rem", border: "1px solid var(--border)", background: "transparent", color: "var(--text)", cursor: "pointer", marginBottom: "0.85rem" }}>
-              + Set
+              {t.addSet}
             </button>
 
             <div>
-              <label style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "0.35rem" }}>NOTES / FORM</label>
-              <input type="text" placeholder="e.g. 55 cm between the hands" value={ex.notes} onChange={e => updateExerciseNotes(exIdx, e.target.value)} />
+              <label style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "0.35rem" }}>{t.notesForm}</label>
+              <input type="text" placeholder={t.notesFormPh} value={ex.notes} onChange={e => updateExerciseNotes(exIdx, e.target.value)} />
             </div>
           </div>
         ))}
 
         {/* ── Add a movement ── */}
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "1rem", marginBottom: "0.75rem" }}>
-          <label style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "0.5rem" }}>ADD A MOVEMENT</label>
+          <label style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "0.5rem" }}>{t.addMovement}</label>
           <select value={selectedExerciseId} onChange={e => addFromDropdown(e.target.value)} style={{ width: "100%", marginBottom: "0.85rem" }}>
-            <option value="">Pick from your movements...</option>
+            <option value="">{t.pickMovement}</option>
             {allExercises.map(e => <option key={e.id} value={String(e.id)}>{e.name}</option>)}
           </select>
-          <label style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "0.5rem" }}>...OR TYPE A NEW ONE</label>
+          <label style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "0.5rem" }}>{t.orTypeNew}</label>
           <div style={{ display: "flex", gap: "0.5rem" }}>
-            <input type="text" placeholder="e.g. Dragon Flag" value={newMovement} onChange={e => setNewMovement(e.target.value)}
+            <input type="text" placeholder={t.newMovementPh} value={newMovement} onChange={e => setNewMovement(e.target.value)}
               onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addExercise())} style={{ flex: 1 }} />
             <button type="button" onClick={() => addExercise()}
               style={{ borderRadius: 20, padding: "0.4rem 1.1rem", fontSize: "0.85rem", background: "var(--lime-dim)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, whiteSpace: "nowrap" }}>
-              + Add
+              {t.addBtn}
             </button>
           </div>
         </div>
 
         {/* ── Session notes ── */}
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "1rem", marginBottom: "0.75rem" }}>
-          <label style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "0.35rem" }}>SESSION NOTES</label>
-          <textarea rows={2} placeholder="How did it go?" value={notes} onChange={e => setNotes(e.target.value)} style={{ width: "100%" }} />
+          <label style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", display: "block", marginBottom: "0.35rem" }}>{t.sessionNotes}</label>
+          <textarea rows={2} placeholder={t.sessionNotesPh} value={notes} onChange={e => setNotes(e.target.value)} style={{ width: "100%" }} />
         </div>
 
         {/* ── Save ── */}
@@ -807,7 +811,7 @@ export default function SessionForm({
               color: "#000", fontWeight: 800, fontSize: "1rem", border: "none",
               borderRadius: 8, padding: "0.95rem", cursor: saving ? "not-allowed" : "pointer", letterSpacing: "0.03em",
             }}>
-            {saving ? "Saving..." : isEdit ? "Save changes" : "Save session"}
+            {saving ? t.saving : isEdit ? t.saveChanges : t.saveSession}
           </button>
         </div>
 

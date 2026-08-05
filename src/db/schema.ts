@@ -108,6 +108,16 @@ export const userSecsIncrements = pgTable("user_secs_increments", {
   value: numeric("value").notNull(),
 });
 
+// ── feedback ──────────────────────────────────────────────────────────────────
+export const feedback = pgTable("feedback", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  user_id: bigint("user_id", { mode: "number" })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ── bodyweight ────────────────────────────────────────────────────────────────
 export const bodyweight = pgTable("bodyweight", {
   measured_on: date("measured_on").primaryKey(),

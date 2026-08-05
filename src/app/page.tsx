@@ -10,6 +10,7 @@ import { faPen, faPlus } from "@fortawesome/free-solid-svg-icons";
 import SwipeableCard from "@/components/SwipeableCard";
 import OfflineSnapshot from "@/components/OfflineSnapshot";
 import HeaderMenu from "@/components/HeaderMenu";
+import { FeedEmptyState, FeedHeader, WeightLabel, RestDayLabel, EditLabel, TotalLabel } from "@/components/FeedClient";
 
 export const revalidate = 0;
 
@@ -56,7 +57,6 @@ export default async function HomePage() {
     .orderBy(desc(sessions.performed_on))
     .limit(20);
 
-  // Fetch full exercise+set data for each session
   const sessionData = await Promise.all(
     recentSessions.map(async (s) => {
       const exRows = await db
@@ -93,43 +93,15 @@ export default async function HomePage() {
         padding: "0.75rem 1rem", borderBottom: "1px solid var(--border)",
         background: "var(--bg)", position: "sticky", top: 0, zIndex: 10,
       }}>
-        <Link href="/" style={{ textDecoration: "none" }}>
-          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
-            <span style={{ color: "var(--lime)", fontWeight: 800, fontSize: "1.1rem", letterSpacing: "0.04em" }}>
-              TRAINING LOGS
-            </span>
-            <span style={{ color: "var(--muted)", fontSize: "0.62rem", letterSpacing: "0.08em" }}>
-              YOUR FEED
-            </span>
-          </div>
-        </Link>
+        <FeedHeader />
         <HeaderMenu />
       </div>
 
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "1rem 1rem 6rem" }}>
-        {sessionData.length === 0 && (
-          <div style={{ textAlign: "center", marginTop: "4rem", padding: "0 1rem" }}>
-            <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🏋️</div>
-            <h2 style={{ color: "var(--text)", fontWeight: 700, fontSize: "1.2rem", marginBottom: "0.5rem" }}>
-              No sessions yet
-            </h2>
-            <p style={{ color: "var(--muted)", fontSize: "0.9rem", marginBottom: "1.75rem", lineHeight: 1.6 }}>
-              Start logging your training.<br />Every rep counts.
-            </p>
-            <Link href="/new" style={{ textDecoration: "none" }}>
-              <button type="button" className="primary" style={{
-                borderRadius: 8, padding: "0.75rem 2rem", fontSize: "1rem",
-                fontWeight: 700, letterSpacing: "0.03em",
-              }}>
-                + Log your first session
-              </button>
-            </Link>
-          </div>
-        )}
+        {sessionData.length === 0 && <FeedEmptyState />}
 
         {sessionData.map((s) => {
           const title = s.title ?? (s.is_rest ? "Rest" : "Session");
-          const weightLabel = s.bodyweight_kg ? `${s.bodyweight_kg} kg` : "Unknown";
 
           return (
             <SwipeableCard key={s.id} sessionId={s.id}>
@@ -142,10 +114,7 @@ export default async function HomePage() {
               }}>
                 {/* Title + Edit button */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.3rem" }}>
-                  <div style={{
-                    color: "var(--lime)", fontWeight: 800, fontSize: "1rem",
-                    letterSpacing: "0.04em", textTransform: "uppercase",
-                  }}>
+                  <div style={{ color: "var(--lime)", fontWeight: 800, fontSize: "1rem", letterSpacing: "0.04em", textTransform: "uppercase" }}>
                     {title}
                   </div>
                   <Link href={`/session/${s.id}/edit`} style={{ textDecoration: "none", flexShrink: 0, marginLeft: "0.75rem" }}>
@@ -155,14 +124,14 @@ export default async function HomePage() {
                       color: "var(--muted)", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.35rem",
                     }}>
                       <FontAwesomeIcon icon={faPen} style={{ width: 11, height: 11 }} />
-                      Edit
+                      <EditLabel />
                     </button>
                   </Link>
                 </div>
 
                 {/* Date — weight */}
                 <div style={{ fontSize: "0.82rem", color: "var(--muted)", marginBottom: "0.75rem" }}>
-                  {formatDate(s.performed_on)} — weight = {weightLabel}
+                  {formatDate(s.performed_on)} — <WeightLabel value={s.bodyweight_kg} />
                 </div>
 
                 {/* Session notes */}
@@ -173,9 +142,7 @@ export default async function HomePage() {
                 )}
 
                 {/* Rest day */}
-                {s.is_rest && s.exercisesWithSets.length === 0 && (
-                  <p style={{ fontStyle: "italic", color: "var(--muted)", fontSize: "0.85rem" }}>Rest day</p>
-                )}
+                {s.is_rest && s.exercisesWithSets.length === 0 && <RestDayLabel />}
 
                 {/* Exercises inline */}
                 {s.exercisesWithSets.map((ex) => (
@@ -187,10 +154,7 @@ export default async function HomePage() {
                       {ex.sets.map((set) => (
                         <li key={set.id} style={{ marginBottom: set.note ? "0.45rem" : "0.25rem" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                            <span style={{
-                              display: "inline-block", width: 5, height: 5,
-                              borderRadius: "50%", background: "var(--muted)", flexShrink: 0,
-                            }} />
+                            <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "var(--muted)", flexShrink: 0 }} />
                             <span style={{ fontSize: "0.88rem" }}>{describeSetLine(set)}</span>
                           </div>
                           {set.note && (
@@ -207,12 +171,9 @@ export default async function HomePage() {
                       {ex.sets.length > 0 && (
                         <li style={{ marginTop: "0.3rem" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                            <span style={{
-                              display: "inline-block", width: 5, height: 5,
-                              borderRadius: "50%", background: "var(--lime)", flexShrink: 0,
-                            }} />
+                            <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "var(--lime)", flexShrink: 0 }} />
                             <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--lime)" }}>
-                              Total: {totalLine(ex.sets)}
+                              <TotalLabel line={totalLine(ex.sets)} />
                             </span>
                           </div>
                         </li>
@@ -220,13 +181,8 @@ export default async function HomePage() {
                       {ex.notes && (
                         <li style={{ marginTop: "0.25rem" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                            <span style={{
-                              display: "inline-block", width: 5, height: 5,
-                              borderRadius: "50%", background: "var(--muted)", flexShrink: 0,
-                            }} />
-                            <span style={{ fontStyle: "italic", color: "var(--muted)", fontSize: "0.8rem" }}>
-                              {ex.notes}
-                            </span>
+                            <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "var(--muted)", flexShrink: 0 }} />
+                            <span style={{ fontStyle: "italic", color: "var(--muted)", fontSize: "0.8rem" }}>{ex.notes}</span>
                           </div>
                         </li>
                       )}
@@ -239,7 +195,7 @@ export default async function HomePage() {
         })}
       </div>
 
-      {/* FAB — + Log */}
+      {/* FAB */}
       <Link href="/new" style={{ textDecoration: "none" }}>
         <button
           type="button"

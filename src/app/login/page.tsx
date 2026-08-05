@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/components/LanguageProvider";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -8,6 +9,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { t } = useT();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,7 +36,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           <input
             type="text"
-            placeholder="Username"
+            placeholder={t.usernamePh}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoFocus
@@ -44,14 +46,14 @@ export default function LoginPage() {
           />
           <input
             type="password"
-            placeholder="Password"
+            placeholder={t.passwordPh}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
           {error && <p style={{ color: "var(--danger)", fontSize: "0.85rem" }}>{error}</p>}
           <button type="submit" className="primary" disabled={loading}>
-            {loading ? <span className="spinner" /> : "Enter"}
+            {loading ? <span className="spinner" /> : t.enterBtn}
           </button>
         </form>
       </div>

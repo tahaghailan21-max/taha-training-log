@@ -6,6 +6,7 @@ import {
   faDumbbell, faLayerGroup, faStickyNote,
   faFloppyDisk, faPen, faMoon,
 } from "@fortawesome/free-solid-svg-icons";
+import { useT } from "@/components/LanguageProvider";
 
 /* ── Mini example block ── */
 function Example({ children }: { children: React.ReactNode }) {
@@ -41,6 +42,7 @@ function ExLabel({ children }: { children: React.ReactNode }) {
 
 /* ── Shared modal content ── */
 function HelpContent({ onClose }: { onClose: () => void }) {
+  const { t } = useT();
   return (
     <>
       {/* ── 1. Session header ── */}
@@ -165,7 +167,7 @@ function HelpContent({ onClose }: { onClose: () => void }) {
           fontWeight: 800, fontSize: "1rem", border: "none",
           borderRadius: 8, padding: "0.9rem", cursor: "pointer",
         }}>
-        Got it
+        {t.gotIt}
       </button>
     </>
   );
@@ -173,6 +175,7 @@ function HelpContent({ onClose }: { onClose: () => void }) {
 
 /* ── Standalone controlled modal ── */
 export function HelpModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useT();
   if (!open) return null;
   return (
     <div
@@ -192,7 +195,7 @@ export function HelpModal({ open, onClose }: { open: boolean; onClose: () => voi
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
           <h1 style={{ color: "var(--lime)", fontWeight: 800, fontSize: "1.2rem", letterSpacing: "0.04em" }}>
-            HOW TO USE
+            {t.howToUseTitle}
           </h1>
           <button type="button" onClick={onClose}
             style={{ background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer", padding: "0.25rem" }}>
@@ -208,6 +211,7 @@ export function HelpModal({ open, onClose }: { open: boolean; onClose: () => voi
 /* ── Self-contained button + modal (for standalone use) ── */
 export function HelpButton({ open: controlledOpen, onOpenChange }: { open?: boolean; onOpenChange?: (v: boolean) => void } = {}) {
   const [internalOpen, setInternalOpen] = useState(false);
+  const { t } = useT();
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
 
@@ -216,7 +220,7 @@ export function HelpButton({ open: controlledOpen, onOpenChange }: { open?: bool
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="How to use"
+        aria-label={t.howToUse}
         style={{
           borderRadius: "50%", width: 36, height: 36, padding: 0,
           display: "flex", alignItems: "center", justifyContent: "center",

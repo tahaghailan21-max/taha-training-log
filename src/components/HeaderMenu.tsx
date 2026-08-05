@@ -1,14 +1,18 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBars, faXmark, faMoon, faSun,
   faRightFromBracket, faDownload, faArrowUpFromBracket,
-  faCircleQuestion,
+  faCircleQuestion, faComment,
 } from "@fortawesome/free-solid-svg-icons";
 import { useTheme } from "@/components/ThemeProvider";
+import { useT } from "@/components/LanguageProvider";
+import { LANGUAGES } from "@/lib/i18n";
 import { HelpModal } from "@/components/HelpModal";
+import FeedbackModal from "@/components/FeedbackModal";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -18,8 +22,10 @@ type BeforeInstallPromptEvent = Event & {
 export default function HeaderMenu() {
   const [open, setOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { theme, toggle } = useTheme();
+  const { t, lang, setLang } = useT();
   const router = useRouter();
 
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -39,16 +45,15 @@ export default function HeaderMenu() {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
-  // Close on outside click — but only if help isn't open
   useEffect(() => {
     if (!open) return;
     function handle(e: MouseEvent) {
-      if (helpOpen) return; // don't close menu while help is open behind it
+      if (helpOpen || feedbackOpen) return;
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
-  }, [open, helpOpen]);
+  }, [open, helpOpen, feedbackOpen]);
 
   async function handleLogout() {
     setOpen(false);
@@ -72,8 +77,8 @@ export default function HeaderMenu() {
 
   return (
     <>
-      {/* Help modal rendered at top level so it's not clipped */}
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
       <div ref={menuRef} style={{ position: "relative" }}>
         {/* Hamburger */}
@@ -95,27 +100,62 @@ export default function HeaderMenu() {
         {open && (
           <div style={{
             position: "absolute", top: "calc(100% + 8px)", right: 0,
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 12, minWidth: 230, zIndex: 200,
-            boxShadow: "0 8px 32px rgba(0,0,0,0.35)",
-            overflow: "hidden",
+            background: "var(--surface)", border: "1px solid var(--border)",
+            borderRadius: 12, minWidth: 240, zIndex: 200,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.35)", overflow: "hidden",
           }}>
-            {/* Theme toggle — does NOT close menu */}
+            {/* Theme toggle */}
             <MenuItem
               icon={<FontAwesomeIcon icon={theme === "dark" ? faMoon : faSun} style={{ width: 15, height: 15 }} />}
-              label={theme === "dark" ? "Dark mode" : "Light mode"}
-              sublabel="Tap to switch"
-              onClick={() => toggle()} // no setOpen(false)
+              label={theme === "dark" ? t.darkMode : t.lightMode}
+              sublabel={t.tapToSwitch}
+              onClick={() => toggle()}
             />
             <Divider />
 
-            {/* How to use — opens modal without closing menu */}
+            {/* Language picker */}
+            <div style={{ padding: "0.6rem 1rem" }}>
+              <div style={{ fontSize: "0.65rem", color: "var(--muted)", letterSpacing: "0.1em", marginBottom: "0.5rem" }}>
+                {t.language.toUpperCase()}
+              </div>
+              <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                {LANGUAGES.map(l => (
+                  <button
+                    key={l.code}
+                    type="button"
+                    onClick={() => setLang(l.code)}
+                    title={l.label}
+                    style={{
+                      width: 30, height: 30, borderRadius: "50%", padding: 0,
+                      border: lang === l.code ? "2px solid var(--lime)" : "2px solid transparent",
+                      background: "transparent", cursor: "pointer",
+                      overflow: "hidden", flexShrink: 0,
+                      outline: "none",
+                      boxShadow: lang === l.code ? "0 0 0 1px var(--lime)" : "none",
+                      transition: "box-shadow 0.15s",
+                    }}
+                  >
+                    <Image src={l.flag} alt={l.label} width={30} height={30} style={{ display: "block", borderRadius: "50%" }} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Divider />
+
+            {/* How to use */}
             <MenuItem
               icon={<FontAwesomeIcon icon={faCircleQuestion} style={{ width: 15, height: 15 }} />}
-              label="How to use"
-              sublabel="Guide & tips"
-              onClick={() => setHelpOpen(true)} // no setOpen(false)
+              label={t.howToUse}
+              sublabel={t.guideAndTips}
+              onClick={() => setHelpOpen(true)}
+            />
+
+            {/* Feedback */}
+            <MenuItem
+              icon={<FontAwesomeIcon icon={faComment} style={{ width: 15, height: 15 }} />}
+              label={t.feedback}
+              sublabel={t.feedbackSub}
+              onClick={() => { setOpen(false); setFeedbackOpen(true); }}
             />
 
             {showInstall && (
@@ -123,8 +163,8 @@ export default function HeaderMenu() {
                 <Divider />
                 <MenuItem
                   icon={<FontAwesomeIcon icon={isIOS ? faArrowUpFromBracket : faDownload} style={{ width: 15, height: 15 }} />}
-                  label="Install app"
-                  sublabel={isIOS ? "Add to Home Screen" : "Install as PWA"}
+                  label={t.installApp}
+                  sublabel={isIOS ? t.addToHome : t.installPWA}
                   onClick={handleInstall}
                 />
               </>
@@ -132,8 +172,8 @@ export default function HeaderMenu() {
             <Divider />
             <MenuItem
               icon={<FontAwesomeIcon icon={faRightFromBracket} style={{ width: 15, height: 15 }} />}
-              label="Log out"
-              sublabel="Sign out of your account"
+              label={t.logOut}
+              sublabel={t.signOut}
               onClick={handleLogout}
               danger
             />
@@ -153,9 +193,9 @@ export default function HeaderMenu() {
               boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
             }}>
               <div style={{ position: "absolute", top: -7, right: 12, width: 12, height: 12, background: "var(--surface)", border: "1px solid var(--border)", borderBottom: "none", borderRight: "none", transform: "rotate(45deg)" }} />
-              <p style={{ margin: "0 0 0.5rem", fontWeight: 700 }}>Add to Home Screen</p>
+              <p style={{ margin: "0 0 0.5rem", fontWeight: 700 }}>{t.addToHome}</p>
               <p style={{ margin: 0, color: "var(--muted)" }}>
-                Tap <FontAwesomeIcon icon={faArrowUpFromBracket} style={{ width: 12, height: 12, margin: "0 2px" }} /> <strong>Share</strong> at the bottom of Safari, then <strong>"Add to Home Screen"</strong>.
+                Tap <FontAwesomeIcon icon={faArrowUpFromBracket} style={{ width: 12, height: 12, margin: "0 2px" }} /> <strong>Share</strong> at the bottom of Safari, then <strong>&quot;{t.addToHome}&quot;</strong>.
               </p>
             </div>
           </>
